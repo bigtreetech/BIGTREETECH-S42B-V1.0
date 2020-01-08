@@ -44,6 +44,7 @@ After the installation is successful, you need to reload again. After the Reload
 - After the compilation is successful, a new firmware.bin file will be generated in the .pioenvs\BIGTREE_S42B_V1_0 directory. 
 
 ### how to update firmware
-
+Click the arrow directly ,the flashing will be finished 
+![`@2CT9{)%{A0W5J)EJ6 07H](https://user-images.githubusercontent.com/46896566/71973083-f785da00-3248-11ea-93db-8e88d3fd414b.png)
 
 
