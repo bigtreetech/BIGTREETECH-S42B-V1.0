@@ -39,7 +39,7 @@ After the installation is successful, you need to reload again. After the Reload
 ![image](https://user-images.githubusercontent.com/25599056/56637542-7d073100-669e-11e9-9e9e-1efa6b73be5d.png)
 
 - After the modification is complete, press Ctrl+Alt+B, and platformio will automatically download the compiled component and compile it.
-![image](https://user-images.githubusercontent.com/25599056/56637550-809ab800-669e-11e9-99d3-6b502e294688.png)
+![WD0{J8~)B60 XK6 4@NJNP5](https://user-images.githubusercontent.com/46896566/71971896-90ffbc80-3246-11ea-8489-6b0180ac58e6.png)
  
 - After the compilation is successful, a new firmware.bin file will be generated in the .pioenvs\BIGTREE_S42B_V1_0 directory. 
 
