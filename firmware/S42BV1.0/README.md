@@ -33,7 +33,7 @@ After the installation is successful, you need to reload again. After the Reload
 ![image](https://user-images.githubusercontent.com/25599056/56637513-6b258e00-669e-11e9-9fad-d0571e57499e.png)
  
 - Find the S42BV1.0 firmware source directory , then click Open
-![image](https://user-images.githubusercontent.com/25599056/56637532-77115000-669e-11e9-809b-f6bc25412f75.png)
+![$E3{ZKT9P7Z1}2E$7T_)ZWY](https://user-images.githubusercontent.com/46896566/71972802-66166800-3248-11ea-9c17-e81114513257.png)
 
 - After opening the project, go to the platformio.ini file and the “env_default” do not to be modified
 ![image](https://user-images.githubusercontent.com/25599056/56637542-7d073100-669e-11e9-9e9e-1efa6b73be5d.png)
