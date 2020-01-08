@@ -36,7 +36,7 @@ After the installation is successful, you need to reload again. After the Reload
 ![$E3{ZKT9P7Z1}2E$7T_)ZWY](https://user-images.githubusercontent.com/46896566/71972802-66166800-3248-11ea-9c17-e81114513257.png)
 
 - After opening the project, go to the platformio.ini file and the “env_default” do not to be modified
-![image](https://user-images.githubusercontent.com/25599056/56637542-7d073100-669e-11e9-9e9e-1efa6b73be5d.png)
+![X()@{QMMW}GR~AW2HVHH5Y6](https://user-images.githubusercontent.com/46896566/71972463-a32e2a80-3247-11ea-9728-480b9e8d1a2e.png)
 
 - After the modification is complete, press Ctrl+Alt+B, and platformio will automatically download the compiled component and compile it.
 ![WD0{J8~)B60 XK6 4@NJNP5](https://user-images.githubusercontent.com/46896566/71971896-90ffbc80-3246-11ea-8489-6b0180ac58e6.png)
