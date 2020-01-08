@@ -35,8 +35,7 @@ After the installation is successful, you need to reload again. After the Reload
 - Find the S42BV1.0 firmware source directory , then click Open
 ![image](https://user-images.githubusercontent.com/25599056/56637532-77115000-669e-11e9-809b-f6bc25412f75.png)
 
-- After opening the project, go to the platformio.ini file and change the default environment .
-the “env_default” do not to be modified
+- After opening the project, go to the platformio.ini file and the “env_default” do not to be modified
 ![image](https://user-images.githubusercontent.com/25599056/56637542-7d073100-669e-11e9-9e9e-1efa6b73be5d.png)
 
 - After the modification is complete, press Ctrl+Alt+B, and platformio will automatically download the compiled component and compile it.
