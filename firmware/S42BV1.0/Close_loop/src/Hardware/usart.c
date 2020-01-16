@@ -466,6 +466,7 @@ void PID_Cal_value_init(void)
     e=0;
     u=0;
     dterm=0;
+    wrap_count=0;
     //LL_TIM_SetCounter(TIM1,0);
     WRITE_REG(TIM1->CNT, 0);
     

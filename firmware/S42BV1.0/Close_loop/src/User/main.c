@@ -674,7 +674,7 @@ void restart_init(void)
         CLEAR_BIT(TIM1->CR1, TIM_CR1_CEN); 
     //LL_TIM_SetCounter(TIM1,0);
 //      WRITE_REG(TIM1->CNT, 0);                     
-//      PID_Cal_value_init();           //
+      PID_Cal_value_init();           //
         
  //LL_TIM_EnableCounter(TIM1);
         SET_BIT(TIM1->CR1, TIM_CR1_CEN);
