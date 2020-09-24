@@ -95,6 +95,7 @@ void MX_USART1_UART_Init(void)
 void usart_Receive_Process(void)
 {
     static uint8_t t;
+    uint16_t angle;
 //    uint32_t Temporary_val=0;
     uint16_t CRC_val=0;
     if(Communications_Process_flag){
@@ -281,6 +282,17 @@ void usart_Receive_Process(void)
                                     UART1_SendStr("Read Dir err\r\n");
                                 }
                             break;
+                        
+                        case 0xBA:
+                            // Custom instruction (Read Sensor Angle)
+                            angle = ReadAngle();
+                            angle = (uint16_t)((360.0 / 16384.0) * (float)angle);   // Eindlik deel met 2^15 maar ReadAngle deel reeds met 2
+                            UART1_SendStr("Angle =");
+                            Uart_Data_Conversion(angle,5);
+                            UART1_SendStr(Charbuff);
+                            UART1_SendStr("\r\n");
+                            break;
+
                         default: UART1_SendStr("Function Code Undefined\r\n");break;
                     }
                 }else{
