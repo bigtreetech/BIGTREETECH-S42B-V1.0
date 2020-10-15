@@ -7,12 +7,29 @@
   * @brief   
   ******************************************************************************
 **/
+
+// JaSw: TODO
+// - A lot of cleaning up!!!
+// - Allow to change and store different serial baud rates
+// - See that serial commands does not interfere with motion
+// - Support for 0.9° steppers
+
+
 #include "main.h"
 #include "oled.h"
 #include "display.h"
 #include "usart.h"
+#include "serial.h"
+#include "tle5012b.h"
+#include "buttons.h"
+#include "flash.h"
+#include "storage.h"
+#include "menu.h"
 
-//sin cos  
+// JaSw: Sine table below has 4096 elements for 360°. The sine function is scaled by 1024.
+// So for example element 30 would be (360/4096)*30 = 2.6367°. The sin function of it
+// gives 0.046 which is then scaled by 1024 to give 47.1 
+
 const int16_t sin_1[] = 
 {
     0,      1,      3,      4,      6,      7,      9,     10,     12,     14,     15,     17,     18,     20,     21,     23,  
@@ -273,9 +290,8 @@ const int16_t sin_1[] =
   -25,    -23,    -21,    -20,    -18,    -17,    -15,    -14,    -12,    -10,     -9,     -7,     -6,     -4,     -3,     -1,  
     0,
 };
-#define STM32_FLASH_BASE        0x8000000           //SOC Flash Base Address 
-#define Data_Store_Arrdess      0x8007C00           //Flash data storage Address 
-#define MENU_NUM                7                   //Number of submenus 
+       
+#define MENU_NUM                7                   // Number of submenus 
 static void LL_Init(void);
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
@@ -291,26 +307,24 @@ void UsDelay(uint16_t us);
 void Output(int32_t theta,uint8_t effort);
 int16_t Mod(int32_t xMod,int16_t mMod);
 void OneStep(void);
-void FlashUnlock(void);
-void FlashLock(void);
-uint8_t FlashGetStatus(void);
-uint8_t FlashWaitDone(uint16_t time);
-uint8_t FlashErasePage(uint32_t paddr);
-void FlashErase32K(void);
-uint8_t FlashWriteHalfWord(uint32_t faddr,uint16_t dat);
-uint16_t FlashReadHalfWord(uint32_t faddr);
-int fputc(int c,FILE *stream); 
-int fgetc(FILE *stream); 
+void FineStep(uint16_t stepSize_mdeg, uint16_t current_mA);
+//int fputc(int c,FILE *stream);  
+//int fgetc(FILE *stream); 
 void SerialCheck(void);
 uint16_t ReadValue(uint16_t RegValue);
 void WriteValue(uint16_t RegAdd,uint16_t RegValue);
 uint16_t ReadState(void);
 uint16_t ReadAngle(void);
 void CalibrateEncoder(void);
-void KeyScan(void);
+
 void Prompt_show(void);
 void restart_init(void);
 
+void OledMenu(void);
+void ShowInfoScreen();
+void SoftStep(uint8_t direction);
+
+// JaSw: Do they need to be signed?
 int16_t kp=30;                //
 int16_t ki=10;                //
 int16_t kd=250;               //
@@ -331,7 +345,7 @@ int32_t yw=0;//
 int32_t yw_1=0;
 int16_t advance=0;//
 int32_t wrap_count=0;//
-int32_t e=0;//
+int32_t pid_e=0;//
 int32_t iterm=0;//
 int32_t dterm=0;//
 int16_t u=0;//
@@ -371,6 +385,13 @@ int16_t Motor_speed_count=0;
 uint8_t start_measu_V_flag=0;
 uint8_t measure_once_flag=0; 
 
+uint8_t menuActive = 0;         // JaSw: In-menu = 1 else 0
+volatile uint32_t tickCount;    // JaSw: Used to count system ticks
+uint32_t prevLoopTickCount;
+bool SoftEnable = 0;            // JaSw: Software motor enable
+uint16_t softMoveStepCount;
+uint8_t softMoveDirection;
+
 uint8_t Currents=0;                 //
 uint8_t Currents_Set=0;
 uint8_t Microstep_Set=0;            //
@@ -380,7 +401,7 @@ uint8_t Dir_Enable=0x00;           //
                                     //ENABLE = 
 uint8_t Motor_Dir=0;               //
 
-uint8_t Motor_Enable=0;            //
+// uint8_t Motor_Enable=0;            // JaSW lyk nie of gebruik word nie
 uint8_t Motor_mode=0;              // 
 volatile uint8_t Motor_ENmode_flag=0; //
 volatile uint8_t enter1_once_flag =1;    //
@@ -406,145 +427,410 @@ volatile uint8_t  Urat_CRC_Correct_flag=0;           //
 //uint8_t Receive_statu=0x00;
 int16_t value_Temp=0;
 
-//
-//ReadAddr:
-//pBuffer:
-//NumToWrite:
-void STMFLASH_Read(uint32_t ReadAddr,uint16_t *pBuffer,uint16_t NumToRead)   	
-{
-	uint16_t i;
-	for(i=0;i<NumToRead;i++)
-	{
-        pBuffer[i]=FlashReadHalfWord(ReadAddr);//
-		ReadAddr+=2;//
-	}
-}
-//
-//WriteAddr:
-//pBuffer:
-//NumToWrite:   
-void STMFLASH_Write_NoCheck(uint32_t WriteAddr,uint16_t *pBuffer,uint16_t NumToWrite)   
-{ 			 		 
-	uint16_t i;
-	for(i=0;i<NumToWrite;i++)
-	{
-		FlashWriteHalfWord(WriteAddr,pBuffer[i]);
-	    WriteAddr+=2;//
-	}  
-} 
 
-//WriteAddr:
-//pBuffer:
-//NumToWrite:
-#define STM32_FLASH_SIZE 64
-#if STM32_FLASH_SIZE<256
-#define STM_SECTOR_SIZE 1024 //
-#else 
-#define STM_SECTOR_SIZE	2048
-#endif		 
-uint16_t STMFLASH_BUF[STM_SECTOR_SIZE/2];//
-void STMFLASH_Write(uint32_t WriteAddr,uint16_t *pBuffer,uint16_t NumToWrite)	
+
+void StoreCurrentParameters()
 {
-	uint32_t secpos;	   //
-	uint16_t secoff;	   //
-	uint16_t secremain; //
- 	uint16_t i;    
-	uint32_t offaddr;   //
-	if(WriteAddr<STM32_FLASH_BASE||(WriteAddr>=(STM32_FLASH_BASE+1024*STM32_FLASH_SIZE)))return;
-	FlashUnlock();						//
-	offaddr=WriteAddr-STM32_FLASH_BASE;		//
-	secpos=offaddr/STM_SECTOR_SIZE;			//
-	secoff=(offaddr%STM_SECTOR_SIZE)/2;		//
-	secremain=STM_SECTOR_SIZE/2-secoff;		//   
-	if(NumToWrite<=secremain)secremain=NumToWrite;//
-	while(1) 
-	{	
-		STMFLASH_Read(secpos*STM_SECTOR_SIZE+STM32_FLASH_BASE,STMFLASH_BUF,STM_SECTOR_SIZE/2);//
-		for(i=0;i<secremain;i++)//
-		{
-			if(STMFLASH_BUF[secoff+i]!=0XFFFF)break;//
-		}
-		if(i<secremain)//
-		{
-			FlashErasePage(secpos*STM_SECTOR_SIZE+STM32_FLASH_BASE);//
-			for(i=0;i<secremain;i++)//
-			{
-				STMFLASH_BUF[i+secoff]=pBuffer[i];	  
-			}
-			STMFLASH_Write_NoCheck(secpos*STM_SECTOR_SIZE+STM32_FLASH_BASE,STMFLASH_BUF,STM_SECTOR_SIZE/2);//  
-		}else STMFLASH_Write_NoCheck(WriteAddr,pBuffer,secremain);//
-		if(NumToWrite==secremain)break;//
-		else//
-		{
-			secpos++;				//
-			secoff=0;				// 	 
-		   	pBuffer+=secremain;  	
-			WriteAddr+=secremain*2;	//   
-		   	NumToWrite-=secremain;	//
-			if(NumToWrite>(STM_SECTOR_SIZE/2))secremain=STM_SECTOR_SIZE/2;//
-			else secremain=NumToWrite;//
-		}	 
-	};	
-	FlashLock();//
+  LED_H;
+
+  // Need to remove hardcode values
+  table1[0]   = 0xAA;                 
+  table1[1]   = Currents;
+  table1[2]   = 16;
+  table1[3]   = stepangle;
+  table1[4]   = 3;
+  table1[5]   = Motor_ENmode_flag;
+  table1[6]   = 1;
+  table1[7]   = Motor_Dir;
+  table1[8]   = 1;
+  table1[11]  = kp;                  
+  table1[12]  = ki;
+  table1[13]  = kd;
+
+  NVIC_DisableIRQ(USART1_IRQn);
+  STMFLASH_Write(Data_Store_Address, table1, 14);
+  NVIC_EnableIRQ(USART1_IRQn);
+
+  LL_mDelay(250);
+  LED_L;
 }
-//OLEDOK
-//2019-10-21 
-//2019-10-22 
-//2019-10-23  
-//2019-10-28
-//2019-10-29 
-//2019-11-02 
-//2019-11-04  
-//2019-11-07 
-//2019-11-11 
-//2019-11-15 
-//2019-11-18 
-//2019-11-19 
-//2020-01-03 
-//
+
+
+// Parse bytes received from the UART
+void ParseBytes(uint8_t data)
+{
+  uint8_t parseState = Serial_Parse(data);
+
+  if (parseState == PARSE_STATUS_NEW_PACKET)
+  {
+    switch(parseBuffer[1])
+    {
+      case SERIAL_MSG_READVALUE:
+      if (parseBuffer[2] == SERIAL_MSG_READVALUE_SOURCE_STATUS)
+        {
+          struct Serial_Msg_Status status;
+          status.statusBitField = 0;
+          status.statusBitField |= Motor_ENmode_flag << SERIAL_MSG_STATUS_ENABLED;
+          status.statusBitField |= enmode << SERIAL_MSG_STATUS_MODE;
+
+          uint16_t len = Serial_GeneratePacket(SERIAL_MSG_ANGLE, &status, sizeof(status));
+          UART1_Write(packetBuffer, len);
+        }
+        if (parseBuffer[2] == SERIAL_MSG_READVALUE_SOURCE_ANGLE)
+        {
+          struct Serial_Msg_Angle aa;
+          aa.angle = ReadAngle() * 0.021972;
+
+          uint16_t len = Serial_GeneratePacket(SERIAL_MSG_ANGLE, &aa, sizeof(aa));
+          UART1_Write(packetBuffer, len);
+        }
+        if (parseBuffer[2] == SERIAL_MSG_READVALUE_SOURCE_ANGERROR)
+        {
+          struct Serial_Msg_AngleError ae;
+          ae.error = pid_e * 0.021972;
+
+          uint16_t len = Serial_GeneratePacket(SERIAL_MSG_ANGERROR, &ae, sizeof(ae));
+          UART1_Write(packetBuffer, len);
+        }
+      break;
+
+      case SERIAL_MSG_GETPARAM:
+      {
+        uint8_t len = 0;
+        if (parseBuffer[2] == SERIAL_MSG_PARAM_SOURCE_KP)
+          len = Serial_GeneratePacket(SERIAL_MSG_PARAM_KP, &kp, 2);
+        else if (parseBuffer[2] == SERIAL_MSG_PARAM_SOURCE_KI)
+          len = Serial_GeneratePacket(SERIAL_MSG_PARAM_KI, &ki, 2);
+        else if (parseBuffer[2] == SERIAL_MSG_PARAM_SOURCE_KD)
+          len = Serial_GeneratePacket(SERIAL_MSG_PARAM_KD, &kd, 2);
+        else if (parseBuffer[2] == SERIAL_MSG_PARAM_SOURCE_CURRENT)
+          len = Serial_GeneratePacket(SERIAL_MSG_PARAM_CURRENT, &Currents, 1);
+        else if (parseBuffer[2] == SERIAL_MSG_PARAM_SOURCE_STEPSIZE)
+          len = Serial_GeneratePacket(SERIAL_MSG_PARAM_STEPSIZE, &stepangle, 1);
+        else if (parseBuffer[2] == SERIAL_MSG_PARAM_SOURCE_ENDIR)
+          len = Serial_GeneratePacket(SERIAL_MSG_PARAM_ENDIR, &Motor_ENmode_flag, 1);
+        else if (parseBuffer[2] == SERIAL_MSG_PARAM_SOURCE_MOTORDIR) 
+          len = Serial_GeneratePacket(SERIAL_MSG_PARAM_MOTORDIR, &Motor_Dir, 1);
+        else
+        {
+          // Parameter not found
+        }
+        UART1_Write(packetBuffer, len);
+      }
+      break;
+
+      case SERIAL_MSG_SETPARAM:
+        if (parseBuffer[2] == SERIAL_MSG_PARAM_SOURCE_KP)
+          kp = (int16_t)((parseBuffer[3] << 8) | parseBuffer[4]);
+        
+        if (parseBuffer[2] == SERIAL_MSG_PARAM_SOURCE_KI)
+          ki = (int16_t)((parseBuffer[3] << 8) | parseBuffer[4]);
+        
+        if (parseBuffer[2] == SERIAL_MSG_PARAM_SOURCE_KD)
+          kd = (int16_t)((parseBuffer[3] << 8) | parseBuffer[4]);
+        
+        if (parseBuffer[2] == SERIAL_MSG_PARAM_SOURCE_STEPSIZE)
+          stepangle = (int16_t)((parseBuffer[3] << 8) | parseBuffer[4]);
+        
+        if (parseBuffer[2] == SERIAL_MSG_PARAM_SOURCE_CURRENT)
+          Currents = (int16_t)((parseBuffer[3] << 8) | parseBuffer[4]);
+        
+        if (parseBuffer[2] == SERIAL_MSG_PARAM_SOURCE_ENDIR)
+          Motor_ENmode_flag = (int16_t)((parseBuffer[3] << 8) | parseBuffer[4]);
+        
+        if (parseBuffer[2] == SERIAL_MSG_PARAM_SOURCE_MOTORDIR)
+          Motor_Dir = (int16_t)((parseBuffer[3] << 8) | parseBuffer[4]);
+        
+      break;
+
+      case SERIAL_MSG_COMMAND:
+        if (parseBuffer[2] == SERIAL_MSG_COMMAND_STEP)
+        {
+          // Get direction
+          uint8_t direction = parseBuffer[3];
+
+          SoftStep(direction);
+        }
+        if (parseBuffer[2] == SERIAL_MSG_COMMAND_STEP_FORWARD)
+        {
+          uint16_t step = parseBuffer[3];
+          step = (step << 8) | parseBuffer[4];
+
+          uint16_t cur = parseBuffer[5];
+          cur = (cur << 8) | parseBuffer[6];
+
+          dir = 0;
+          FineStep(step, cur);
+        }
+        if (parseBuffer[2] == SERIAL_MSG_COMMAND_STEP_BACK)
+        {
+          uint16_t step = parseBuffer[3];
+          step = (step << 8) | parseBuffer[4];
+
+          uint16_t cur = parseBuffer[5];
+          cur = (cur << 8) | parseBuffer[6];
+
+          dir = 1;
+          FineStep(step, cur);
+        }
+        if (parseBuffer[2] == SERIAL_MSG_COMMAND_MOVE)
+        {
+          uint16_t steps = parseBuffer[3];
+          steps = (steps << 8) | parseBuffer[4];
+
+          softMoveStepCount = steps;
+          softMoveDirection = parseBuffer[5];
+        }
+        if (parseBuffer[2] == SERIAL_MSG_COMMAND_STORAGE_SAVE)
+        {
+          StoreCurrentParameters();
+        }
+        if (parseBuffer[2] == SERIAL_MSG_COMMAND_MODE_ENABLE)
+        {
+          SoftEnable = 1;
+        }
+        if (parseBuffer[2] == SERIAL_MSG_COMMAND_MODE_DISABLE)
+        {
+          SoftEnable = 0;
+        }
+        if (parseBuffer[2] == SERIAL_MSG_COMMAND_MODE_CLOSELOOP)
+        {
+          // Changing modes require states to be reset
+          if (closemode == 0)
+            PID_Cal_value_init();
+          closemode = 1;
+        }
+        if (parseBuffer[2] == SERIAL_MSG_COMMAND_MODE_OPENLOOP)
+        {
+          // Changing modes require states to be reset
+          if (closemode == 1)
+            PID_Cal_value_init();
+          closemode = 0;
+        }
+      break;
+    } 
+    /*
+    UART1_SendByte(msgLength);
+
+    for (int i = 0; i < msgLength; i++)
+      UART1_Write(parseBuffer[i]);
+      */
+
+  }
+  
+}
+
+
+void SoftStep(uint8_t direction)
+{
+  uint16_t softStep = LL_TIM_GetCounter(TIM1);
+
+  if(direction == 1)
+    softStep++;
+  else
+    softStep--;
+  
+  // Update step
+  LL_TIM_SetCounter(TIM1, softStep);
+}
+
+
+void SoftMoveStep()
+{
+  // Maybe add more checks, HW override SW?
+  // Dalk n enable ook sit, omdat hy in main loop geroep word hardloop hy sodra softMoveStepCount groter as 0 is.
+  if (enmode == 1)
+  {
+    if(softMoveStepCount > 0)
+    {
+      SoftStep(softMoveDirection);
+      softMoveStepCount--;
+    }
+  }
+}
+
+// Convert to mA by multiplying by 6.5
+uint16_t Converter_Current(uint16_t valueIn)
+{
+  uint16_t valueOut = (valueIn * 13) / 2;
+  return valueOut;
+}
+
+
+// Convert to microstep ratio
+uint16_t Converter_Stepsize(uint16_t valueIn)
+{
+  uint16_t valueOut = 64 / valueIn;
+  return valueOut;
+}
+
+
+// Override function for the default item value changer
+void Changer_StepSize(struct Menu *menu, int16_t val)
+{
+  uint8_t newVal;
+
+  if (val > 0)
+  {
+    newVal = *(uint8_t*)menu->items[menu->selectedItemIndex]->variable.value >> 1;
+    if (newVal >= menu->items[menu->selectedItemIndex]->variable.minValue)
+      *(uint8_t*)menu->items[menu->selectedItemIndex]->variable.value = newVal;
+  }
+  else
+  {
+    newVal = *(uint8_t*)menu->items[menu->selectedItemIndex]->variable.value << 1;
+    if (newVal <= menu->items[menu->selectedItemIndex]->variable.maxValue)
+      *(uint8_t*)menu->items[menu->selectedItemIndex]->variable.value = newVal;
+  } 
+}
+
+
+void ExitMenu()
+{
+  menuActive = 0;
+  OLED_Clear();
+  ShowInfoScreen();
+}
+
+
+void ShowInfoScreen()
+{
+  OLED_ShowString(0,2,"Simp:  0000 RPM");
+  OLED_ShowString(0,22," Err:  000.00 ");
+  OLED_ShowString(0,42," Deg:  0000.0");
+}
+
+
+// Declare menu and menu items (should be in global space)
+struct Menu menuMain;
+struct menuItem menuItemCalibrate;
+struct menuItem menuItemCurrent;
+struct menuItem menuItemStepSize;
+struct menuItem menuItemEnablePin;
+struct menuItem menuItemDirectionPin;
+struct menuItem menuItemPID_P;
+struct menuItem menuItemPID_I;
+struct menuItem menuItemPID_D;
+struct menuItem menuItemSave;
+struct menuItem menuItemExit;
+
+
+void BuildMenu()
+{
+  // Register function that will be used for drawing
+  Menu_Register_Draw(OLED_ShowString);
+
+  Menu_Register_Clear(OLED_Clear);
+
+  Menu_Item_Init(&menuItemCalibrate);
+  menuItemCalibrate.title = "Calibrate";
+  menuItemCalibrate.type = MENU_ITEM_TYPE_ACTION;
+  menuItemCalibrate.action = &CalibrateEncoder;
+
+  Menu_Item_Init(&menuItemCurrent);
+  menuItemCurrent.title = "Current";
+  menuItemCurrent.type = MENU_ITEM_TYPE_VARIABLE_UINT8;
+  menuItemCurrent.variable.value = &Currents;
+  menuItemCurrent.variable.maxValue = 300;                          // Limit max current to just below 2A
+  menuItemCurrent.variable.valueConverter = &Converter_Current;
+
+  Menu_Item_Init(&menuItemStepSize);
+  menuItemStepSize.title = "Step Size";
+  menuItemStepSize.type = MENU_ITEM_TYPE_VARIABLE_UINT8;                            
+  menuItemStepSize.variable.value = &stepangle;  
+  menuItemStepSize.variable.maxValue = 32;
+  menuItemStepSize.variable.minValue = 1; 
+  menuItemStepSize.variable.valueConverter = &Converter_Stepsize;
+  menuItemStepSize.variable.change = &Changer_StepSize;             // Override the default value change function        
+
+  Menu_Item_Init(&menuItemEnablePin);
+  menuItemEnablePin.title = "EN Pin";                   
+  menuItemEnablePin.type = MENU_ITEM_TYPE_VARIABLE_UINT8;
+  menuItemEnablePin.variable.value = &Motor_ENmode_flag;  
+  menuItemEnablePin.variable.maxValue = 1;
+
+  Menu_Item_Init(&menuItemDirectionPin);
+  menuItemDirectionPin.title = "DIR Pin";
+  menuItemDirectionPin.type = MENU_ITEM_TYPE_VARIABLE_UINT8;
+  menuItemDirectionPin.variable.value = &Motor_Dir;
+  menuItemDirectionPin.variable.maxValue = 1;
+
+  Menu_Item_Init(&menuItemPID_P);
+  menuItemPID_P.title = "PID P";
+  menuItemPID_P.type = MENU_ITEM_TYPE_VARIABLE_UINT16;
+  menuItemPID_P.variable.value = &kp;
+  
+  Menu_Item_Init(&menuItemPID_I);
+  menuItemPID_I.title = "PID I";
+  menuItemPID_I.type = MENU_ITEM_TYPE_VARIABLE_UINT16;
+  menuItemPID_I.variable.value = &ki;
+
+  Menu_Item_Init(&menuItemPID_D);
+  menuItemPID_D.title = "PID D";
+  menuItemPID_D.type = MENU_ITEM_TYPE_VARIABLE_UINT16;
+  menuItemPID_D.variable.value = &kd;
+
+  Menu_Item_Init(&menuItemSave);
+  menuItemSave.title = "Save";
+  menuItemSave.type = MENU_ITEM_TYPE_ACTION;
+  menuItemSave.action = &StoreCurrentParameters;
+
+  Menu_Item_Init(&menuItemExit);
+  menuItemExit.title = "Exit";
+  menuItemExit.type = MENU_ITEM_TYPE_ACTION;
+  menuItemExit.action = &ExitMenu;
+
+  Menu_Init(&menuMain);
+  Menu_Add_Item(&menuMain, &menuItemCalibrate);
+  Menu_Add_Item(&menuMain, &menuItemCurrent);
+  Menu_Add_Item(&menuMain, &menuItemStepSize);
+  Menu_Add_Item(&menuMain, &menuItemEnablePin);
+  Menu_Add_Item(&menuMain, &menuItemDirectionPin);
+  Menu_Add_Item(&menuMain, &menuItemPID_P);
+  Menu_Add_Item(&menuMain, &menuItemPID_I);
+  Menu_Add_Item(&menuMain, &menuItemPID_D);
+  Menu_Add_Item(&menuMain, &menuItemSave);
+  Menu_Add_Item(&menuMain, &menuItemExit);
+//  Menu_Show(&menuMain);
+
+}
+
+
 int main(void)
 {
- 
-//    uint16_t table[10]={0xA,0xAA,0xAAA,0xB,5,6,7,8,9,10};
     LL_Init();
     SystemClock_Config();
-    MX_GPIO_Init();                           
-    OLED_Init();                                
-    OLED_ShowString(0,0,"Oled Init...OK");
+    MX_GPIO_Init();   
+    OLED_Init();
+    
+    OLED_Clear();                              
+    OLED_ShowString(0,0,"   TrueStep   ");
     MX_SPI1_Init();
     MX_TIM3_Init();
-   
+
+    TLE5012B_Init();
+    Serial_Init();
+
     LL_mDelay(100);
 
-    OLED_Clear();                             
-    OLED_ShowString(0,0,"Close Loop Model");
-
-//    STMFLASH_Write(Data_Store_Arrdess,table,10);
-//    LL_mDelay(2);
-//    STMFLASH_Read(Data_Store_Arrdess,table1,10);
-//while(1);
     FlashUnlock();
-    Calibration_flag = FlashReadHalfWord(Data_Store_Arrdess);
+    Calibration_flag = FlashReadHalfWord(Data_Store_Address);
     FlashLock();
+
+    // JaSw: Disable calibration check while testing code
+    //Calibration_flag = 0xAA;
+
     if(Calibration_flag == 0xAA){
         OLED_ShowString(0,25,"  Calibration  ");
         OLED_ShowString(40,45,"  OK!");
         LL_mDelay(500);
-        
-        OLED_Clear();   
-        OLED_ShowString(0,2,"Simp:  0000 RPM");
-        OLED_ShowString(0,22," Err:  000.00 ");
-        OLED_ShowString(0,42," Deg:  0000.0");
-        Menu_Num_item=2;                                        
-        Second_Menu=1;                                          
-        Menu_update_flag=0;                                    
-        Menu_Num=1;                                               
-        Reset_status_flag=1;                                    
-//      Menu_Num2_item=8;                                       
-//      Motor_Enable = enmode;                                
-/*****************************************************/
+                                            
+        Reset_status_flag=1;                                
 
-        STMFLASH_Read(Data_Store_Arrdess,table1,14);            
+        // Read parameters                                                         
+        STMFLASH_Read(Data_Store_Address,table1,14); 
+        
+        // Check sensor and DIP switches           
         SetModeCheck();                 
         
         Currents=table1[1];             
@@ -559,139 +845,200 @@ int main(void)
         Motor_Dir =table1[7];            
         Menu_Num5_item =table1[8];
         
-//        Motor_Dir =table1[9];           
-//        Menu_Num5_item =table1[10];
-
         kp = table1[11];                //Kp
         ki = table1[12];                //Ki
         kd = table1[13];                //Kd
     }
-    else{
+    else
+    {   
+        OLED_Clear();  
         OLED_ShowString(48,16,"NOT");
-        OLED_ShowString(16,32,"Calibration");
-        OLED_ShowString(0,48,"Please calibrate");
+        OLED_ShowString(16,32,"Calibrated");
+        OLED_ShowString(0,48,"Please Calibrate");
         LL_mDelay(500);
-        //
-        OLED_Clear();
+        // Sit hier nog n flag of iets om na die calibration opsie te spring
+/*        OLED_Clear();
         OLED_ShowString(0,0,"->");
 
         while(1){//
-            KeyScan();
+            OledMenu(); //KeyScan();
             Oled_display();
-        }            
+        }          */  
     }
-  
+    
+    
     NVIC_EnableIRQ(EXTI0_1_IRQn);                               //
     NVIC_EnableIRQ(EXTI2_3_IRQn);                               //
     MX_USART1_UART_Init();                                      //USART Init
-    UART1_SendStr("MX_USART1_UART_Init OK\r\n");
-    
+
     MX_TIM1_Init();                                             //Tim1  Init
     MX_TIM6_Init();                                             //Tim6  Init 
     MX_IWDG_Init();                                             //Idog  Init
+
+    OLED_Clear();
+    BuildMenu(); 
+    ShowInfoScreen();
+
+    // Main loop
     while(1)
     { 	
 /**************************************************************/
-        if(Motor_ENmode_flag ==1){
-            if(ENIN==1) {                            
-                restart_init();                              
-//                if(Reset_status_flag !=0 ){
-//                //LL_TIM_DisableCounter(TIM1);
-//                CLEAR_BIT(TIM1->CR1, TIM_CR1_CEN); 
-//                //LL_TIM_SetCounter(TIM1,0);
-////                WRITE_REG(TIM1->CNT, 0);                     
-//                  PID_Cal_value_init();           //
-//                    
-//                //LL_TIM_EnableCounter(TIM1);
-//                SET_BIT(TIM1->CR1, TIM_CR1_CEN);
-//                }
-//                enmode=1;
-//                Reset_status_flag=0;
+// Manage the reset of states between motor enable, to avoid sudden
+// movement if the motor moved while being disabled.  
+        if(Motor_ENmode_flag == 1)   //Motor_ENmode_flag is eindlik die variable wat die polarity van EN pin bepaal
+        {
+            if((ENIN==1) || (SoftEnable)) 
+            {                            
+                restart_init();    // Word, elke keer geroep maar net eerste keer uitgevoer. Reset TIM1, PID en enable motor                           
             }
-            else{
+            else
+            {
                 Reset_status_flag++;     //0++
+              //  Reset_status_flag = 1;
             }
-        }else if(Motor_ENmode_flag ==0){
-            if(ENIN==0){
+        }
+        else if(Motor_ENmode_flag == 0)
+        {
+            if((ENIN==0) || (SoftEnable))
+            {
                 restart_init(); //               
-//                if(Reset_status_flag !=0 ){         //
-//                    
-//                //LL_TIM_DisableCounter(TIM1);
-//                CLEAR_BIT(TIM1->CR1, TIM_CR1_CEN); 
-//                //LL_TIM_SetCounter(TIM1,0);
-////                WRITE_REG(TIM1->CNT, 0);   
-//                    PID_Cal_value_init();           //
-//                     
-//                //LL_TIM_EnableCounter(TIM1);
-//                    SET_BIT(TIM1->CR1, TIM_CR1_CEN);
-//                }
-//                enmode=1;                           // 
-//                Reset_status_flag=0;
             }
-            else{
+            else
+            {
                 Reset_status_flag++;     //0++
+            //    Reset_status_flag = 1;
             }
         }
 /*******************************************************************/
-        if(Reset_status_flag == 1){       
-            enmode=0;
-            Reset_status_flag ++;           //1++
-            WRITE_REG(TIM3->CCR1, 0);
-            WRITE_REG(TIM3->CCR2, 0);
-            
-            PID_Cal_value_init();           //
-                
-            wap1=0;
-            wap2=0;
+// Hierdie lyk weer soos die deel van AAN na AF
+        if(Reset_status_flag == 1)
+        {       
+          enmode=0;
+          Reset_status_flag ++;           //1++
+          //  Reset_status_flag = 2;
 
-            Data_update_flag=1;
-        }else{
-            if(Reset_status_flag>3)
-                Reset_status_flag--;
+          // Disable motor current output
+          WRITE_REG(TIM3->CCR1, 0);
+          WRITE_REG(TIM3->CCR2, 0);
+            
+          PID_Cal_value_init();           //
+                
+          wap1=0;
+          wap2=0;
+
+          Data_update_flag=1;
         }
-        usart_Receive_Process();                        
-        if(frame_Error_flag){
-            frame_Error_flag =0;
-             UART1_SendStr("Frame Err!\r\n");   
+        else
+        {
+          if(Reset_status_flag>3)
+            Reset_status_flag--;
         }
-        if(flash_store_flag ==1){
+
+//Hierdie lyk soos die funksie wat parameters save na UART of OLED instruksie
+/*
+        if(flash_store_flag ==1)
+        {
             flash_store_flag =0;
 
             NVIC_DisableIRQ(USART1_IRQn);
-            STMFLASH_Write(Data_Store_Arrdess,table1,14);//
+            STMFLASH_Write(Data_Store_Address,table1,14);//
             NVIC_EnableIRQ(USART1_IRQn);
         }
-        KeyScan();                                      
-        Oled_display();                                 
-        Motor_data_dis();                               
+*/
+        if (UART1_BytesToRead() > 0)
+        {
+          uint8_t data = UART1_Read();
+          ParseBytes(data);
+        }
 
+        OledMenu(); //KeyScan(); 
+        
+        if (menuActive == 0)
+          Motor_data_dis();
+
+        // So step teen 1ms tick counts, dalk meer akkuraat om op n timer se interrupt te sit later.
+        if (tickCount > prevLoopTickCount)
+          SoftMoveStep();
+
+//        Oled_display();                                 
+//        Motor_data_dis();                               
+
+      prevLoopTickCount = tickCount;
     }
 }
+
+
 //Restart init 
 void restart_init(void)
 {
-    //
-    if(Reset_status_flag !=0 ){
-    //LL_TIM_DisableCounter(TIM1);
-        CLEAR_BIT(TIM1->CR1, TIM_CR1_CEN); 
-    //LL_TIM_SetCounter(TIM1,0);
-//      WRITE_REG(TIM1->CNT, 0);                     
-      PID_Cal_value_init();           //
-        
- //LL_TIM_EnableCounter(TIM1);
-        SET_BIT(TIM1->CR1, TIM_CR1_CEN);
-    }
-    enmode=1;
-    Reset_status_flag=0;
+  if(Reset_status_flag !=0 )
+  {
+    LL_TIM_DisableCounter(TIM1);
+
+    // Reset the step counter (TIM1) and PID variables
+    LL_TIM_SetCounter(TIM1,0);                   
+    PID_Cal_value_init();           
+      
+    LL_TIM_EnableCounter(TIM1);
+  }
+  enmode=1;
+  Reset_status_flag=0;
 }
-//Key Scan 
-void KeyScan(void)
+
+ 
+void OledMenu(void)
 {
-    if(KEY_Select == 0){        //
-        LL_mDelay(10);
-        if(KEY_Select == 0){
-            if(Menu_Num ==0){//
-                if(KEY_Select_flag ==0){//
+  uint8_t key;
+  static uint32_t prevTickCount;
+
+  if (!KeyScan(&key))
+    return;
+
+  
+  if ((key & KEY_PRESSED_SELECT) > 0)     // lower button
+  {
+    if (menuActive == 1)
+    {
+      Menu_Button_Down(&menuMain);
+      Menu_Show(&menuMain);
+    }
+  }
+
+  if ((key & KEY_PRESSED_BACK) > 0)
+  {
+    // Slow down the rate at which this key can be used
+    if ((tickCount - prevTickCount) > 250)
+    {
+      if (menuActive == 0)
+      {
+        menuActive = 1;
+        OLED_Clear();
+        Menu_Show(&menuMain);
+      }
+      else
+        Menu_Select_Edit(&menuMain);
+    }    
+  }
+
+  if ((key & KEY_PRESSED_CONFIRM) > 0)    // upper button
+  {
+    if (menuActive == 1)
+    {
+      Menu_Button_Up(&menuMain);
+      Menu_Show(&menuMain);
+    }
+  }
+
+  prevTickCount = tickCount;
+
+return;
+/*
+        if((key & KEY_PRESSED_SELECT) > 0)
+        {
+            if(Menu_Num == 0)
+            {
+                if(KEY_Select_flag ==0)
+                {
                     KEY_Select_flag=1;
                     Menu_update_flag=1;                 //
                     
@@ -734,31 +1081,36 @@ void KeyScan(void)
                 }
             }
         }
-    }else if(KEY_Back == 0){
-        LL_mDelay(10);
-        if(KEY_Back == 0){
-            if(KEY_Back_flag ==0){
+
+        if((key & KEY_PRESSED_BACK) > 0)
+        {
+            if(KEY_Back_flag ==0)
+            {
                 KEY_Back_flag=1;
-                Menu_update_flag=1;         //
-                OLED_Clear();                   //
-                //
-                if(Enter_exit_flag == 1){
+                Menu_update_flag=1;         
+                OLED_Clear();                   
+                
+                if(Enter_exit_flag == 1)
+                {
                     Enter_exit_flag=0;
-                    Menu_Num=0;                         //
-                    Menu_Num_item=2;                    //
+                    Menu_Num=0;                         
+                    Menu_Num_item=2;                    
                     Second_Menu=1;
                     //break;
-                }else {
+                }
+                else 
+                {
                     Menu_Num++;
-                    if(Menu_Num >1 ){
+                    if(Menu_Num >1 )
+                    {
                         Menu_Num=0;
                     }
                 }
             }
         }
-    }else if(KEY_Confirm == 0){
-        LL_mDelay(10);
-        if(KEY_Confirm == 0){
+
+        if((key & KEY_PRESSED_CONFIRM) > 0)
+        {
             if(KEY_Confirm_flag ==0){
                 KEY_Confirm_flag=1;
                 switch(Menu_Num){
@@ -824,7 +1176,7 @@ void KeyScan(void)
                                         enter_num=0;
                                         Second_Menu=1;
                                         enmode =0;                      //
-                                        PID_Cal_value_init();           /**/
+                                        PID_Cal_value_init();           
                                         //
                                         stepangle =Microstep_Set;   //
                                         
@@ -925,11 +1277,11 @@ void KeyScan(void)
                 }
             }
         }
-    }else{
+    else{
         KEY_Select_flag=0;       //
         KEY_Back_flag=0;         //
         KEY_Confirm_flag=0;
-    }
+    }*/
 }
 
 static void LL_Init(void)
@@ -943,6 +1295,8 @@ static void LL_Init(void)
 
 void SystemClock_Config(void)
 {
+  // 8MHz HSI Clock -> div_2 -> pll_mult_12 = 48MHz
+
   LL_FLASH_SetLatency(LL_FLASH_LATENCY_1);
 	
   if(LL_FLASH_GetLatency() != LL_FLASH_LATENCY_1)
@@ -970,23 +1324,32 @@ void SystemClock_Config(void)
   {}
   LL_Init1msTick(48000000);
   LL_SYSTICK_SetClkSource(LL_SYSTICK_CLKSOURCE_HCLK);
+  SysTick->CTRL |= SysTick_CTRL_TICKINT_Msk;                  // Enable SysTick interrupt
   LL_SetSystemCoreClock(48000000);
   LL_RCC_SetUSARTClockSource(LL_RCC_USART1_CLKSOURCE_PCLK1);
   NVIC_SetPriority(SysTick_IRQn, 0);
+
+  
 }
+
 
 static void MX_IWDG_Init(void)
 {
+  // WDG Timer counts down from reload value
+  // Setting window to 4095 disables window mode.
+  // Clock is 40kHz (25us) with a prescaler of 256 it would
+  // take 25us * 256 * 4096 = 26.21s to reset the MCU. 
   LL_IWDG_Enable(IWDG);
   LL_IWDG_EnableWriteAccess(IWDG);
   LL_IWDG_SetPrescaler(IWDG, LL_IWDG_PRESCALER_256);
-  LL_IWDG_SetWindow(IWDG, 4095);
+  LL_IWDG_SetWindow(IWDG, 4095);                        
   LL_IWDG_SetReloadCounter(IWDG, 0xfff);
   while (LL_IWDG_IsReady(IWDG) != 1)
   {}
   LL_IWDG_ReloadCounter(IWDG);
 }
-//
+
+
 static void MX_SPI1_Init(void)
 {
   LL_SPI_InitTypeDef SPI_InitStruct;
@@ -1039,7 +1402,8 @@ static void MX_SPI1_Init(void)
   LL_SPI_SetStandard(SPI1, LL_SPI_PROTOCOL_MOTOROLA); 
   LL_SPI_Enable(SPI1); 
 }
-//
+
+// Initialize Timer1 with STEP pin as clock source
 static void MX_TIM1_Init(void)
 {
   LL_TIM_InitTypeDef TIM_InitStruct = {0};
@@ -1074,7 +1438,8 @@ static void MX_TIM1_Init(void)
   LL_TIM_DisableMasterSlaveMode(TIM1);
   LL_TIM_EnableCounter(TIM1);
 }
-//
+
+//Looks like Timer3 is setup as the PWM driving the A4950 
 static void MX_TIM3_Init(void)
 {
   LL_TIM_InitTypeDef TIM_InitStruct;
@@ -1105,7 +1470,7 @@ static void MX_TIM3_Init(void)
 
   TIM_InitStruct.Prescaler = 0;
   TIM_InitStruct.CounterMode = LL_TIM_COUNTERMODE_UP;
-  TIM_InitStruct.Autoreload = 256;//
+  TIM_InitStruct.Autoreload = 256;                              // JaSw: Determine PWM freq. 48MHz / 256 = 187.5kHz
   TIM_InitStruct.ClockDivision = LL_TIM_CLOCKDIVISION_DIV1;
   LL_TIM_Init(TIM3, &TIM_InitStruct);
 
@@ -1140,7 +1505,9 @@ static void MX_TIM3_Init(void)
   LL_TIM_CC_EnableChannel(TIM3, LL_TIM_CHANNEL_CH2);
   LL_TIM_EnableCounter(TIM3);
 }
-//
+
+// Use to perform the PID loop
+// Looks like no prescaler so 48MHz / 4800 = 10kHz = 100us
 static void MX_TIM6_Init(void)
 {
   LL_TIM_InitTypeDef TIM_InitStruct;
@@ -1262,14 +1629,14 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
   GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
   LL_GPIO_Init(IN3_GPIO_Port, &GPIO_InitStruct);
-  
+ /* 
   GPIO_InitStruct.Pin = NSS_Pin;
   GPIO_InitStruct.Mode = LL_GPIO_MODE_OUTPUT;
   GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_HIGH;
   GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
   GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
   LL_GPIO_Init(NSS_GPIO_Port, &GPIO_InitStruct);
-
+*/
   LL_SYSCFG_SetEXTISource(LL_SYSCFG_EXTI_PORTB, LL_SYSCFG_EXTI_LINE1);
   LL_SYSCFG_SetEXTISource(LL_SYSCFG_EXTI_PORTB, LL_SYSCFG_EXTI_LINE2);
   
@@ -1296,20 +1663,27 @@ static void MX_GPIO_Init(void)
 //  NVIC_DisableIRQ(EXTI2_3_IRQn);
 }
 
+
 void SetModeCheck(void)
 {
   WriteValue(WRITE_MOD2_VALUE,MOD2_VALUE);
-  uint16_t state=ReadState();//
-  if(state&0x0080)//
+  
+  // Read status register
+  uint16_t state=ReadState();
+  // Check for Magnitude out of limit error
+  if(state&0x0080)
   {
-    for(uint8_t m=0;m<10;m++){
+    for(uint8_t m=0;m<10;m++)
+    {
       LED_H;
-	  LL_mDelay(200);
-	  LED_L;
-	  LL_mDelay(200);	
+	    LL_mDelay(200);
+	    LED_L;
+	    LL_mDelay(200);	
     } 
-  }	
-  if(Calibration_flag !=0xAA){
+  }
+
+  if(Calibration_flag !=0xAA)
+  {
 loop: if(CAL==0)
         CalibrateEncoder();
         if(1 != Second_Calibrate_flag){
@@ -1323,7 +1697,8 @@ loop: if(CAL==0)
             stepangle=2;//
         }
     }
-    else if(Calibration_flag == 0xAA && Second_Calibrate_flag ==1){
+    else if(Calibration_flag == 0xAA && Second_Calibrate_flag ==1)
+    {
 //      Second_Calibrate_flag=0;
       goto loop;
     }
@@ -1343,7 +1718,8 @@ loop: if(CAL==0)
         closemode=0;
     }
 
-    if(CalibrateEncoder_finish_flag ==1){   
+    if(CalibrateEncoder_finish_flag ==1)
+    {   
         CalibrateEncoder_finish_flag=0; 
         Second_Calibrate_flag=0;
         Prompt_show();               //
@@ -1358,8 +1734,24 @@ loop: if(CAL==0)
 //    }
 }
 
-void Output(int32_t theta,uint8_t effort) 
-{	
+
+// Energize coils. The electrical angle is given by theta and the current limit by effort.
+void Output(int32_t theta, uint8_t effort) 
+{
+  // JaSw: To control the current in the coils the voltage on the VRef pin of the A4950
+  // needs to be adjusted. This is done through a PWM output and filter circuit which is
+  // connected to VRef.
+  // One electrical 360° cycle consist of 4 discrete stages which also moves the motor 
+  // 4 full steps.
+  // The sine lookup table has a size of 4096 for 360°. So each step is 1024 elements 
+  // or 90° appart. The code below has a phase_multiplier of 12.5 which means a single
+  // full step would require theta of 1024 / 12.5 = 81.92 
+  // The effort argument sets the current limit. TIM3 provides the PWM signal to the Vref 
+  // pin of the A4950. Rs is 0.2 Ohm, so the current limit is Vref/2. TIM3 reloads on 
+  // 256 counts and if we assume 100% duty is 3.3V then each count would represent about
+  // (3.3 / 256) / 2 = 6.45 mA. So an effort value of 80 would have a Vref of 1V and a
+  // current limit of 0.516A
+  
   int16_t v_coil_A;
   int16_t v_coil_B;
 
@@ -1369,45 +1761,86 @@ void Output(int32_t theta,uint8_t effort)
   int16_t angle_1;
   int16_t angle_2;
 		
-  float phase_multiplier=12.5f;//
+  float phase_multiplier = 12.5f;                     // Multiply theta by 12.5 Not really sure what the purpose of this is?
+                                                      
+  angle_1 = Mod(phase_multiplier * theta, 4096);
+  angle_2 = angle_1 + 1024;                           // Sin to Cos conversion (1024 = 90°)
+  if(angle_2 > 4096)
+    angle_2 -= 4096;
 
-  angle_1=Mod(phase_multiplier*theta,4096);//
-  angle_2=angle_1+1024;
-  if(angle_2>4096)
-    angle_2-=4096;
+  sin_coil_A = sin_1[angle_1];
+  sin_coil_B = sin_1[angle_2];
 
-  sin_coil_A=sin_1[angle_1];
-  sin_coil_B=sin_1[angle_2];
-
-  v_coil_A=effort*sin_coil_A/1024;//
-  v_coil_B=effort*sin_coil_B/1024;//
+  // Calculate the timer compare values. 
+  // This detemines the PWM duty which again determines the coil current. The sine table
+  // is scaled by 1024. So to normalize to 1, the value is divided by 1024.
+  v_coil_A = effort * sin_coil_A / 1024;
+  v_coil_B = effort * sin_coil_B / 1024;
 	
+  // Set the TIM3 PWM duty for channel2 and switch the H-Bridge
   if(v_coil_A>=0)  
   {
     LL_TIM_OC_SetCompareCH2(TIM3,v_coil_A);  
-	IN1_HIGH;  
-    IN2_LOW;  
+	  IN1_HIGH;                                         
+    IN2_LOW;                                          
   }
   else  
   {
     LL_TIM_OC_SetCompareCH2(TIM3,-v_coil_A);  
-	IN1_LOW;     
+	  IN1_LOW;     
     IN2_HIGH;  
   } 
+
+  // Set the TIM3 PWM duty for channel1 and switch the H-Bridge
   if(v_coil_B>=0)  
   {
     LL_TIM_OC_SetCompareCH1(TIM3,v_coil_B);  
-	IN3_HIGH;  
+	  IN3_HIGH;  
     IN4_LOW;  
   }
   else 
   {
     LL_TIM_OC_SetCompareCH1(TIM3,-v_coil_B); 
-	IN3_LOW;     
+	  IN3_LOW;     
     IN4_HIGH;    
   }
 }
-//
+
+
+// Takes a step of which the size is provided in milli-degrees (max 1800m°) 
+void FineStep(uint16_t stepSize_mdeg, uint16_t current_mA )
+{
+  // This function is currently used more for testing and analysis purposes.
+
+  // Limited to a full step size
+  if (stepSize_mdeg > 1800)
+    stepSize_mdeg = 1800;
+
+  // Set current max limit
+  if (current_mA > 1600)
+    current_mA = 1600;
+
+  if(dir) 
+    stepnumber+=1;
+  else 
+    stepnumber-=1;
+
+  // Die float opsie is swaar op geheue, het eerder integers gebruik en met
+  // 22 gedeel wat 1000/45.51 is. Moet nog toets of dit akkuraat genoeg is.
+  //float stepScale = (stepSize_mdeg / 1000.0f) * 45.51;
+  int32_t stepScale = (stepSize_mdeg / 22) * stepnumber;
+
+  // Deel met 6.45 maar gebruik eerder integer wiskunde wat deel met 6.5, 
+  // behoort akkuraat genoeg te wees en gebruik minder geheue.
+  uint8_t currentScale = (uint8_t)(current_mA / 13) * 2;    
+  //uint8_t currentScale = (uint8_t)(current_mA / 6.45);
+
+  Output(stepScale * stepnumber, currentScale);     
+  //LL_mDelay(10);
+}
+
+
+// Take one full step (1.8°)
 void OneStep(void)
 {          
   if(dir) 
@@ -1415,10 +1848,14 @@ void OneStep(void)
   else 
     stepnumber-=1;
   
-  Output(81.92f*stepnumber,80);
+  // The sine table is 4096 elements long. A single 1.8° step would be a 90° electrical 
+  // shift, which is 1024 elements. The output function has a multiplier of 12.5 so to 
+  // move a single step we need to move 1024 / 12.5 = 81.92 units. 
+  Output(81.92f * stepnumber, 80);     
   LL_mDelay(10);
 }
-//
+
+
 int16_t Mod(int32_t xMod,int16_t mMod) 
 {
   int16_t temp;
@@ -1429,174 +1866,7 @@ int16_t Mod(int32_t xMod,int16_t mMod)
 	return  temp;
 }
 
-void UsDelay(uint16_t us)
-{
-  us*=10;
-  while(us)	
-  {
-    __NOP();
-	__NOP();
-	us--;
-  }
-}
-//
-void FlashUnlock(void)
-{
-  FLASH->KEYR=FLASH_KEY1;
-  FLASH->KEYR=FLASH_KEY2;
-}
-//
-void FlashLock(void)
-{
-  FLASH->CR|=1<<7; 
-}
-//
-uint8_t FlashGetStatus(void)
-{
-  uint32_t res;
-  res=FLASH->SR;
-  if(res&(1<<0))//flash busy
-    return 1; 
-  else if(res&(1<<2))  //Programming error
-	return 2; 
-  else if(res&(1<<4))  //
-	return 3; 
-  return 0;     
-}
-
-uint8_t FlashWaitDone(uint16_t time)
-{
-  uint8_t res;
-  do
-  {
-    res=FlashGetStatus();
-    if(res!=1)
-	  break;
-	UsDelay(1);	
-    time--;
-  }while(time);
-  if(time==0)
-    res=0xff;
-  return res;
-}
-//
-uint8_t FlashErasePage(uint32_t paddr)
-{
-  uint8_t res=0;
-  res=FlashWaitDone(0X5FFF);
-  if(res==0)
-  {
-    FLASH->CR|=1<<1; 
-    FLASH->AR=paddr; 
-    FLASH->CR|=1<<6; 
-    res=FlashWaitDone(0X5FFF); 
-    if(res!=1) 
-      FLASH->CR&=~(1<<1); 
-  }
-  return res;
-}
-//
-void FlashErase32K(void)
-{
-  FlashErasePage(0x08008000);
-  FlashErasePage(0x08008400);
-  FlashErasePage(0x08008800);
-  FlashErasePage(0x08008C00);
-  FlashErasePage(0x08009000);
-  FlashErasePage(0x08009400);
-  FlashErasePage(0x08009800);
-  FlashErasePage(0x08009C00);
-  FlashErasePage(0x0800A000);
-  FlashErasePage(0x0800A400);
-  FlashErasePage(0x0800A800);
-  FlashErasePage(0x0800AC00);
-  FlashErasePage(0x0800B000);
-  FlashErasePage(0x0800B400);
-  FlashErasePage(0x0800B800);
-  FlashErasePage(0x0800BC00);
-  FlashErasePage(0x0800C000);
-  FlashErasePage(0x0800C400);
-  FlashErasePage(0x0800C800);
-  FlashErasePage(0x0800CC00);
-  FlashErasePage(0x0800D000);
-  FlashErasePage(0x0800D400);
-  FlashErasePage(0x0800D800);
-  FlashErasePage(0x0800DC00);
-  FlashErasePage(0x0800E000);
-  FlashErasePage(0x0800E400);
-  FlashErasePage(0x0800E800);
-  FlashErasePage(0x0800EC00);
-  FlashErasePage(0x0800F000);
-  FlashErasePage(0x0800F400);
-  FlashErasePage(0x0800F800); 
-  FlashErasePage(0x0800FC00);
-}
-//
-uint8_t FlashWriteHalfWord(uint32_t faddr,uint16_t dat)
-{
-  uint8_t  res;
-  res=FlashWaitDone(0XFF);
-  if(res==0)
-  {
-    FLASH->CR|=1<<0;
-    *(volatile uint16_t*)faddr=dat; 
-    res=FlashWaitDone(0XFF);
-	if(res!=1)
-    {
-      FLASH->CR&=~(1<<0); 
-    }
-  }
-  return res;
-}
-//
-uint16_t FlashReadHalfWord(uint32_t faddr)
-{
-  return *(volatile uint16_t*)faddr;
-}
            
-//
-uint16_t ReadValue(uint16_t RegAdd)
-{
-  uint16_t data;
-  NSS_L;
-  while(LL_SPI_IsActiveFlag_TXE(SPI1)==0);
-  LL_SPI_TransmitData16(SPI1,RegAdd);
-  while(LL_SPI_IsActiveFlag_RXNE(SPI1)==0);
-  data=LL_SPI_ReceiveData16(SPI1);
-  SPI_TX_OD;
-  while(LL_SPI_IsActiveFlag_TXE(SPI1)==0);
-  LL_SPI_TransmitData16(SPI1,0xFFFF);
-  while(LL_SPI_IsActiveFlag_RXNE(SPI1)==0);
-  data=LL_SPI_ReceiveData16(SPI1)&0x7FFF;
-  NSS_H;
-  SPI_TX_PP;
-  return data;
-}
-//
-void WriteValue(uint16_t RegAdd,uint16_t RegValue)
-{
-  NSS_L;
-  while(LL_SPI_IsActiveFlag_TXE(SPI1)==0);
-  LL_SPI_TransmitData16(SPI1,RegAdd);
-  while(LL_SPI_IsActiveFlag_RXNE(SPI1)==0);
-  LL_SPI_ReceiveData16(SPI1);
-  while(LL_SPI_IsActiveFlag_TXE(SPI1)==0);
-  LL_SPI_TransmitData16(SPI1,RegValue);
-  while(LL_SPI_IsActiveFlag_RXNE(SPI1)==0);
-  LL_SPI_ReceiveData16(SPI1);
-  NSS_H;
-}
-//
-uint16_t ReadState(void)
-{
-  return (ReadValue(READ_STATUS));
-}
-//
-uint16_t ReadAngle(void)
-{
-  return (ReadValue(READ_ANGLE_VALUE)>>1);
-}
-//
 void CalibrateEncoder(void) 
 {   
   int32_t encoderReading=0;    
@@ -1613,40 +1883,51 @@ void CalibrateEncoder(void)
 
   uint16_t lookupAngle;
 		
+  // Disable DIR en EN interrupts while calibrating, to be tested still...  
+  //enmode=0;
+  //NVIC_DisableIRQ(EXTI0_1_IRQn);
+  //NVIC_DisableIRQ(EXTI2_3_IRQn);
+                                                              
   dir=1; 
-  Output(0,80);//
+  Output(0,80);
   for(uint8_t m=0;m<4;m++)
   {
     LED_H;
-	LL_mDelay(250);
+	  LL_mDelay(250);
     LED_L;
-	LL_mDelay(250);	
-  } 
+	  LL_mDelay(250);	
+  }
+  // 200 steps 
   for(int16_t x=0;x<=199;x++)//
   {    
     encoderReading=0;
    	LL_mDelay(20);                     
-    lastencoderReading=ReadAngle();     
-    for(uint8_t reading=0;reading<10;reading++) 
-	{ 
-      currentencoderReading=ReadAngle(); 
-      if(currentencoderReading-lastencoderReading<-8192)
-        currentencoderReading+=16384;
-      else if(currentencoderReading-lastencoderReading>8192)
-        currentencoderReading-=16384;
+    lastencoderReading = ReadAngle();
+    // Take 10 readings and then average them     
+    for(uint8_t reading=0; reading < 10; reading++) 
+	  { 
+      currentencoderReading = ReadAngle(); 
+      if(currentencoderReading - lastencoderReading < -8192)
+        currentencoderReading += 16384;
+      else if(currentencoderReading - lastencoderReading > 8192)
+        currentencoderReading -= 16384;
  
-      encoderReading+=currentencoderReading;
+      encoderReading += currentencoderReading;
       LL_mDelay(10);
-      lastencoderReading=currentencoderReading;
+      lastencoderReading = currentencoderReading;
     }
-    encoderReading=encoderReading/10;
-    if(encoderReading>16384)
-      encoderReading-=16384;
-    else if(encoderReading<0)
-      encoderReading+=16384;
-    fullStepReadings[x]=encoderReading;  
+    encoderReading = encoderReading / 10;
+
+    if(encoderReading > 16384)
+      encoderReading -= 16384;
+    else if(encoderReading < 0)
+      encoderReading += 16384;
+
+    // Store the encoder reading  
+    fullStepReadings[x] = encoderReading;  
+
     OneStep();
-	LL_mDelay(100); 
+	  LL_mDelay(100); 
   }
   dir=0; 
   OneStep();
@@ -1657,7 +1938,7 @@ void CalibrateEncoder(void)
    	LL_mDelay(20);                     
     lastencoderReading=ReadAngle();     
     for(uint8_t reading=0;reading<10;reading++) 
-	{ 
+	  { 
       currentencoderReading=ReadAngle(); 
       if(currentencoderReading-lastencoderReading<-8192)
         currentencoderReading+=16384;
@@ -1673,12 +1954,16 @@ void CalibrateEncoder(void)
       encoderReading-=16384;
     else if(encoderReading<0)
       encoderReading+=16384;
+
+    // Average current samples with previous samples  
     fullStepReadings[x]=(fullStepReadings[x]+encoderReading)/2;  
     OneStep();
 	LL_mDelay(100); 
   }
+
   LL_TIM_OC_SetCompareCH1(TIM3,0);  
   LL_TIM_OC_SetCompareCH2(TIM3,0); 
+
   for(uint8_t i=0;i<200;i++)//
   {
     ticks=fullStepReadings[(i+1)%200]-fullStepReadings[i%200];
@@ -1686,8 +1971,9 @@ void CalibrateEncoder(void)
       ticks+=16384;
     else if(ticks>15000)	
 	  ticks-=16384;	
+
     for(int32_t j=0;j<ticks;j++) 
-	{
+	  {
       stepNo=(fullStepReadings[i]+j)%16384;
       if(stepNo==0) 
       {
@@ -1696,59 +1982,68 @@ void CalibrateEncoder(void)
       }
     }
   }
+
   FlashUnlock();
   FlashErase32K();
+
   for(int32_t i=iStart;i<(iStart+200+1);i++)//
   {
-	ticks=fullStepReadings[(i+1)%200]-fullStepReadings[i%200];
+	  ticks=fullStepReadings[(i+1)%200]-fullStepReadings[i%200];
     if(ticks<-15000) 
       ticks+=16384;         
     if(i==iStart) 
-	{ 
+	  { 
       for(int32_t j=jStart;j<ticks;j++) 
-	  {
+	    {
         lookupAngle=(8192*i+8192*j/ticks)%1638400/100;
-		FlashWriteHalfWord(address,(uint16_t)lookupAngle);
-		address+=2;
+		    FlashWriteHalfWord(address,(uint16_t)lookupAngle);
+		    address+=2;
       }
     }
     else if(i==(iStart+200)) 
-	{ 
+	  { 
       for(int32_t j=0;j<jStart;j++) 
-	  {
+	    {
         lookupAngle=((8192*i+8192*j/ticks)%1638400)/100;
-		FlashWriteHalfWord(address,(uint16_t)lookupAngle);
-		address+=2;
+		    FlashWriteHalfWord(address,(uint16_t)lookupAngle);
+		    address+=2;
       }
     }
     else 
-	{                        //this is the general case
+	  {                        //this is the general case
       for(int32_t j=0;j<ticks;j++) 
       {
         lookupAngle=((8192*i+8192*j/ticks)%1638400)/100;
-		FlashWriteHalfWord(address,(uint16_t)lookupAngle);
-		address+=2;
+		    FlashWriteHalfWord(address,(uint16_t)lookupAngle);
+		    address+=2;
       }
     }
   }
   FlashLock();
-  if(Second_Calibrate_flag !=1){                            //
-    //
+  if(Second_Calibrate_flag !=1)
+  {                             
     flash_store_flag =1;            //
-    table1[0] =0xAA;                //
-    table1[1] =128;table1[2] =16;
-    table1[3] =4;table1[4] =3;
-    table1[5] =0;table1[6] =1;
-    table1[7] =1;table1[8] =1;
+    table1[0] =0xAA;                // 
+    table1[1] =128;
+    table1[2] =16;
+    table1[3] =4;
+    table1[4] =3;
+    table1[5] =0;
+    table1[6] =1;
+    table1[7] =1;
+    table1[8] =1;
     table1[11]=kp;                  //
     table1[12]=ki;
     table1[13]=kd;
   
     Calibration_flag =0xAA;    //
 //    Second_Menu=1;             // 
-    STMFLASH_Write(Data_Store_Arrdess,table1,14);//
+    STMFLASH_Write(Data_Store_Address,table1,14);//
   }
   
+  //NVIC_EnableIRQ(EXTI0_1_IRQn);
+  //NVIC_EnableIRQ(EXTI2_3_IRQn);
+
   CalibrateEncoder_finish_flag=1; //  
 }
 //

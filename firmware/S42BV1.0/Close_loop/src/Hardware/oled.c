@@ -156,22 +156,34 @@ void OLED_ShowNum(uint8_t x,uint8_t y,uint32_t num,uint8_t len,uint8_t size)
 			}else enshow=1;  
 		}
 	 	OLED_ShowChar(x+(size/2)*t,y,temp+'0',size,1); 
-	}
+	} 
 } 
+
 
 void OLED_ShowString(uint8_t x,uint8_t y,const char *p)
 {
 #define MAX_CHAR_POSX 120
-#define MAX_CHAR_POSY 58          
+#define MAX_CHAR_POSY 58
+
     while(*p!='\0')
     {       
-        if(x>MAX_CHAR_POSX){x=0;y+=16;}
-        if(y>MAX_CHAR_POSY){y=x=0;OLED_Clear();}
+        if(x > MAX_CHAR_POSX)
+		{ 
+			x=0;
+			y+=16;
+		}
+        if(y > MAX_CHAR_POSY)
+		{
+			y=x=0;
+			//OLED_Clear();
+			break;				// JaSw: Limit to a single page of text
+		}
         OLED_ShowChar(x,y,*p,16,1);	 
         x+=8;
         p++;
     }  
 }	   
+
 
 /*
 void OLED_Showword(uint8_t x,uint8_t y,uint8_t *num,uint8_t mode)
@@ -221,7 +233,7 @@ void OLED_Init(void)
 	OLED_RST_H; 
 	OLED_WR_Byte(0xAE,OLED_CMD);//
 	OLED_WR_Byte(0xD5,OLED_CMD);//,
-	OLED_WR_Byte(80,OLED_CMD);  //
+	OLED_WR_Byte(0x00,OLED_CMD);  //	Modification proposed by Till (Quas7). Changed 80 to 0x00
 	OLED_WR_Byte(0xA8,OLED_CMD);//
 	OLED_WR_Byte(0X3F,OLED_CMD);//(1/64) 
 	OLED_WR_Byte(0xD3,OLED_CMD);//
@@ -250,32 +262,4 @@ void OLED_Init(void)
 	LL_mDelay(100);
 	OLED_Clear();
 }  
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
