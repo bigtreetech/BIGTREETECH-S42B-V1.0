@@ -385,12 +385,15 @@ int16_t Motor_speed_count=0;
 uint8_t start_measu_V_flag=0;
 uint8_t measure_once_flag=0; 
 
-uint8_t menuActive = 0;         // JaSw: In-menu = 1 else 0
-volatile uint32_t tickCount;    // JaSw: Used to count system ticks
+uint8_t menuActive = 0;           // JaSw: In-menu = 1 else 0
+volatile uint32_t tickCount;      // JaSw: Used to count system ticks
 uint32_t prevLoopTickCount;
-bool SoftEnable = 0;            // JaSw: Software motor enable
+bool SoftEnable = 0;              // JaSw: Software motor enable
 uint16_t softMoveStepCount;
 uint8_t softMoveDirection;
+uint32_t prevStreamTickCount;
+bool streamAngle;
+bool tuningMode;                  // JaSw: Indicates tuning mode, where some normal features are disabled
 
 uint8_t Currents=0;                 //
 uint8_t Currents_Set=0;
@@ -479,7 +482,7 @@ void ParseBytes(uint8_t data)
         if (parseBuffer[2] == SERIAL_MSG_READVALUE_SOURCE_ANGLE)
         {
           struct Serial_Msg_Angle aa;
-          aa.angle = ReadAngle() * 0.021972;
+          aa.angle = ReadAngle() * 0.021972f;
 
           uint16_t len = Serial_GeneratePacket(SERIAL_MSG_ANGLE, &aa, sizeof(aa));
           UART1_Write(packetBuffer, len);
@@ -607,6 +610,20 @@ void ParseBytes(uint8_t data)
             PID_Cal_value_init();
           closemode = 0;
         }
+        if (parseBuffer[2] == SERIAL_MSG_COMMAND_STREAM_ANGLE)
+        {
+          if (parseBuffer[3] > 0)
+          {
+            streamAngle = true;
+            tuningMode = true;
+          }
+          else
+          {
+            streamAngle = false;
+            tuningMode = false;
+          }
+        }
+
       break;
     } 
     /*
@@ -618,6 +635,22 @@ void ParseBytes(uint8_t data)
 
   }
   
+}
+
+
+void StreamAngle()
+{
+  if (tickCount < (prevStreamTickCount + 5))
+    return;
+
+  struct Serial_Msg_Angle streamedAng;
+  streamedAng.angle = (float)y;
+
+  // Use 'y' which is read in the controller loop
+  uint8_t len = Serial_GeneratePacket(SERIAL_MSG_ANGLE, &streamedAng, sizeof(streamedAng));
+  UART1_Write(packetBuffer, len);
+
+  prevStreamTickCount = tickCount;
 }
 
 
@@ -953,8 +986,13 @@ int main(void)
 
         OledMenu(); //KeyScan(); 
         
-        if (menuActive == 0)
+        // TODO: Test for streaming mode during tuning, motor live display slows main loop down
+
+        if ((menuActive == 0) && (!tuningMode))
           Motor_data_dis();
+
+        if (streamAngle)
+          StreamAngle();
 
         // So step teen 1ms tick counts, dalk meer akkuraat om op n timer se interrupt te sit later.
         if (tickCount > prevLoopTickCount)

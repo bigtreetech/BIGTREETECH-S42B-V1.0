@@ -242,10 +242,16 @@ void TIM6_IRQHandler(void)
         r_1 = r;
       }
       
+      // Disable motor speed calculation while in tuning mode.
+      // This is to make sure this controller loop uses the minimum time.
+      if (!tuningMode)
+      {
         Motor_speed_count++;
-          if(start_measu_V_flag==1){
+          if(start_measu_V_flag==1)
+          {
               Data_update_Count++;
-              if(Data_update_Count>=10000){       //
+              if(Data_update_Count>=10000)
+              {       //
                   Data_update_Count=0;
                   wap1=wap2;
                   wap2=wrap_count;
@@ -254,7 +260,8 @@ void TIM6_IRQHandler(void)
                   
               }
           }
-          if(Motor_speed_count>=2000){
+          if(Motor_speed_count>=2000)
+          {
               Motor_speed_count-=2000;
               Data_update_flag=1;           //
               
@@ -262,8 +269,9 @@ void TIM6_IRQHandler(void)
               start_measu_V_flag=1;
               if(wap1== wap2) start_measu_V_flag=0; 
           }
-      }
+      }   
     }
+  }
 }
 
 

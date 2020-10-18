@@ -170,7 +170,7 @@ extern int32_t stepnumber;              // Used in OneStep() function
 extern uint8_t stepangle;
 
 extern volatile uint32_t tickCount;     // JaSw: Counts ticks
-
+extern bool tuningMode;
 
 extern uint16_t hccount;
 extern uint8_t closemode;

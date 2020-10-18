@@ -47,6 +47,7 @@ enum SERIAL_MSG_COMMAND
     SERIAL_MSG_COMMAND_MODE_DISABLE     = 11,           // Software version of EN pin deactivated
     SERIAL_MSG_COMMAND_MODE_CLOSELOOP   = 12,
     SERIAL_MSG_COMMAND_MODE_OPENLOOP    = 13,
+    SERIAL_MSG_COMMAND_STREAM_ANGLE     = 20,           // Starts/stop streaming angle values via UART
 };
 
 #define SERIAL_MSG_READVALUE        1
