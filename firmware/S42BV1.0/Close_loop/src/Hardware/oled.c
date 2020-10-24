@@ -36,24 +36,44 @@ void OLED_WR_Byte(u8 dat,u8 cmd)
 
 
 
-void OLED_WR_Byte(uint8_t dat,uint8_t cmd)
+void OLED_WR_Byte(uint8_t dat,uint8_t cmd)  //adding some NOPs to reduce jumpyness of SCLK up to 2MHz and to increase timing margin between SPI signals
 {	
 	uint8_t i;	
-    if(cmd)    
+    if(cmd) 
+	{   
         OLED_RS_H; 
+	}
     else 
         OLED_RS_L;
-	OLED_CS_L;		  
+	
+	OLED_CS_L;		
+	
 	for(i=0;i<8;i++)
 	{			  
 		OLED_SCLK_L;
-		if(dat&0x80)OLED_SDIN_H;
+		if(dat&0x80)
+		{
+			OLED_SDIN_H;
+			asm volatile ( "nop":: ); //compensate for faster timing for dat&0x80 being true
+			asm volatile ( "nop":: );
+			asm volatile ( "nop":: );  
+			asm volatile ( "nop":: ); 
+		}
 		else OLED_SDIN_L;
-		OLED_SCLK_H;
-		dat<<=1;   
+		asm volatile ( "nop":: );  
+		asm volatile ( "nop":: ); 
+		
+		OLED_SCLK_H;   // this rising edge of SCLK triggers the sampling by the OLED SSD1306
+		/*asm volatile ( "nop":: ); // get close to 50:50 duty cycle on the clock
+		asm volatile ( "nop":: );
+		asm volatile ( "nop":: );  
+		asm volatile ( "nop":: ); */
+
+		dat<<=1;   //shift dat one bit
 	}				 
+	
 	OLED_CS_H;		  
-	OLED_RS_H;   	  
+	OLED_RS_H; 
 } 
 #endif	     
 
@@ -221,7 +241,7 @@ void OLED_Init(void)
 	OLED_RST_H; 
 	OLED_WR_Byte(0xAE,OLED_CMD);//
 	OLED_WR_Byte(0xD5,OLED_CMD);//,
-	OLED_WR_Byte(0x00,OLED_CMD);  // reduced com speed to ~270kHz to avoid assumed 187kHz(?) Motor-PWM harmonics
+	OLED_WR_Byte(0xF0,OLED_CMD);  // originally d80 changed to 0x00 but 0x80 would be default
 	OLED_WR_Byte(0xA8,OLED_CMD);//
 	OLED_WR_Byte(0X3F,OLED_CMD);//(1/64) 
 	OLED_WR_Byte(0xD3,OLED_CMD);//
