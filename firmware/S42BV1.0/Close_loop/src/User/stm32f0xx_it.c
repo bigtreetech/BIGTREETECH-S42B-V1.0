@@ -133,31 +133,22 @@ void TIM6_IRQHandler(void)
         // If it does not, you will have to hold the RES(ET) button manually until "hla_swd" is shown during openOCD programming. 
         // Releasing RES directly at this point will start the normal programming. Holding RES too long will result in a timeout.
         
-        #define sensorless_sensitivty 28  // adjust sensorloess homing sensitivty here. A value of 28 is triggering the endstop for 0.6deg deviation (16384 = 360deg)
-        if(e>sensorless_sensitivty || e<-1*sensorless_sensitivty){  // triggering around 0.2deg deviation
-          //enable SWDIO (PA13) as output pin 
-
-          //TODO: this is ugly in an interrupt routine! But defining this centrally in main.c breaks SWD programming or at least the programming verification in OCD-programming mode
-          
-          GPIO_InitStruct.Pin = SENSORLESS_Pin;
-          GPIO_InitStruct.Mode = LL_GPIO_MODE_OUTPUT;
-          GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_HIGH;
-          GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
-          GPIO_InitStruct.Pull = LL_GPIO_PULL_UP;
-          LL_GPIO_Init(SENSORLESS_GPIO_Port, &GPIO_InitStruct);
-          
-          SENSORLESS_L;  // trigger endstop by pulling pin LOW
-          LED_H;  // for debugging, trigger red LED; comment this out, if not needed
-          
+        #define sensorless_sensitivty 72 // adjust sensorloess homing sensitivty here. 16384 LSB = 360deg, 1 LSB = 0,022deg
+        if(e > sensorless_sensitivty || e < -1*sensorless_sensitivty){  
+          sensorless_trigger_counter++; //counter of global var that triggers endstop if limit is reached. Var is reset to 0 in void sensorless_counter()
         }
         else {
+          if (sensorless_trigger_counter > 0)
+          {
+            sensorless_trigger_counter--;
+          }
           SENSORLESS_H; // PA13 high (3.3Volt)
-          LED_L; // red LED off; comment this out, if original LED purpose is required (magnetic too strong/weak, overcurrent, 36deg limit...)
+          //LED_L; // red LED off; comment this out, if original LED purpose is required (magnetic too strong/weak, overcurrent, 36deg limit...)
 
-          //switch PA13 back to SWDIO behavior 
-          // TODO: this is still ugly and even does not work. SWDIO functionality is not restored by a simple LL_GPIO_MODE_INPUT. 
+          // switch PA13 back to SWDIO behavior //
+          // TODO: The GPIO_Init below is ugly and also does not work. 
+          // SWDIO functionality is notrestored by a simple LL_GPIO_MODE_INPUT. 
           // Hitting RES manually or using BOOT0 is likely always required.
-
         /*
           GPIO_InitStruct.Pin = SENSORLESS_Pin;
           GPIO_InitStruct.Mode = LL_GPIO_MODE_INPUT;   //LL_GPIO_MODE_ALTERNATE also does not restore SWDIO functionality
