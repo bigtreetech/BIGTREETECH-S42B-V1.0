@@ -44,6 +44,8 @@
 #define ENIN_EXTI_IRQn EXTI2_3_IRQn
 #define LED_Pin LL_GPIO_PIN_11  
 #define LED_GPIO_Port GPIOB
+#define SENSORLESS_Pin LL_GPIO_PIN_13  //PA13 SWDIO is package pin34 on LQFP38
+#define SENSORLESS_GPIO_Port GPIOA
 #define PWM1_Pin LL_GPIO_PIN_4
 #define PWM1_GPIO_Port GPIOB
 #define PWM2_Pin LL_GPIO_PIN_5
@@ -107,6 +109,9 @@
 #define KEY_Select      LL_GPIO_IsInputPinSet(KEY_Select_GPIO_Port,KEY_Select_Pin)
 #define KEY_Back        LL_GPIO_IsInputPinSet(KEY_Back_GPIO_Port,KEY_Back_Pin)
 #define KEY_Confirm     LL_GPIO_IsInputPinSet(KEY_Confirm_GPIO_Port,KEY_Confirm_Pin)
+
+#define SENSORLESS_H     LL_GPIO_SetOutputPin(SENSORLESS_GPIO_Port, SENSORLESS_Pin)  
+#define SENSORLESS_L     LL_GPIO_ResetOutputPin(SENSORLESS_GPIO_Port, SENSORLESS_Pin) 
 
 #define LED_H     LL_GPIO_SetOutputPin(LED_GPIO_Port, LED_Pin)  
 #define LED_L     LL_GPIO_ResetOutputPin(LED_GPIO_Port, LED_Pin) 

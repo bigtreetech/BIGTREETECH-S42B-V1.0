@@ -1228,6 +1228,23 @@ static void MX_GPIO_Init(void)
   LL_GPIO_Init(OLED_RST_GPIO_Port, &GPIO_InitStruct);
   
 /*************************************************/
+/***************sensorless homing IO **********************************/
+// to keep SWD programming working, the pin init is done the ugly way in the sensorless homing function in stm32f0xx_it.c
+// Still, on-the-fly SWD programming might not work in all cases.
+// If this happens, you will have to hold the RES(ET) button manually until "hla_swd" is shown during openOCD programming (standard for vscode+platform.io with stlink). 
+// Releasing RES directly at this point will start the normal programming. Holding RES too long will result in a timeout.
+
+  /*
+  GPIO_InitStruct.Pin = SENSORLESS_Pin;
+  GPIO_InitStruct.Mode = LL_GPIO_MODE_OUTPUT;
+  GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_HIGH;
+  GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
+  GPIO_InitStruct.Pull = LL_GPIO_PULL_UP;
+  LL_GPIO_Init(SENSORLESS_GPIO_Port, &GPIO_InitStruct);
+  */
+    
+/*************************************************/
+
   GPIO_InitStruct.Pin = LED_Pin;
   GPIO_InitStruct.Mode = LL_GPIO_MODE_OUTPUT;
   GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_HIGH;

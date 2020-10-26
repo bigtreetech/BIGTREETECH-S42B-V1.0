@@ -78,6 +78,7 @@ void EXTI2_3_IRQHandler(void)
 
 void TIM6_IRQHandler(void)
 {
+  LL_GPIO_InitTypeDef GPIO_InitStruct;
   if(LL_TIM_IsActiveFlag_UPDATE(TIM6) == 1)
   {
 	LL_TIM_ClearFlag_UPDATE(TIM6);
@@ -106,16 +107,68 @@ void TIM6_IRQHandler(void)
         else measure_once_flag =0;
         yw=y+16384*wrap_count;//           
 	    e=r-yw;//误差值
+       
+        // red warning LED triggering
+        // NOTE: see below sensorless homing function using also this LED for debugging
         if(e>1638){//
           e=1638;
-          LED_H;  
+          LED_H;  // if too far off (around +36deg), red light on
         }
         else if(e<-1638){
           e=-1638;
-          LED_H;  
+          LED_H;  // if too far off (around -36deg), red light on
         }else {
-            LED_L;
+          LED_L; // else red light off
         }
+       
+        // *************************************************************************************************************************************
+        // sensorless homing feature via active low SWDIO pin (PA13) on S42B com-header
+        //
+        // Mind that connecting SWDIO to an endstop pin on the mainboard is a non-buffered direct connection to the STM32 controller on the S42B
+        // Adjust the sensitivty for sensorless homing with #define sensorless_sensitivty
+        // Generally, do not home too fast with this methode!
+        //
+        // Also note that the repurposing of the SWDIO Pin (PA13) as sensorless homing endstop output might break the on-the-fly SWD programming.
+        // Pressing RES(ET) on the S42B once and retry programming normally works fine. The triggering of the sensorless homing sensitivty threshold kills the on-the-fly SWD interface!).
+        // If it does not, you will have to hold the RES(ET) button manually until "hla_swd" is shown during openOCD programming. 
+        // Releasing RES directly at this point will start the normal programming. Holding RES too long will result in a timeout.
+        
+        #define sensorless_sensitivty 14  // adjust sensorloess homing sensitivty here. A value of 14 is triggering the endstop for 0.3deg deviation (16384 = 360deg)
+        if(e>sensorless_sensitivty || e<-1*sensorless_sensitivty){  // triggering around 0.2deg deviation
+          //enable SWDIO (PA13) as output pin 
+
+          //TODO: this is ugly in an interrupt routine! But defining this centrally in main.c breaks SWD programming or at least the programming verification in OCD-programming mode
+          
+          GPIO_InitStruct.Pin = SENSORLESS_Pin;
+          GPIO_InitStruct.Mode = LL_GPIO_MODE_OUTPUT;
+          GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_HIGH;
+          GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
+          GPIO_InitStruct.Pull = LL_GPIO_PULL_UP;
+          LL_GPIO_Init(SENSORLESS_GPIO_Port, &GPIO_InitStruct);
+          
+          SENSORLESS_L;  // trigger endstop by pulling pin LOW
+          LED_H;  // for debugging, trigger red LED; comment this out, if not needed
+          
+        }
+        else {
+          SENSORLESS_H; // PA13 high (3.3Volt)
+          LED_L; // red LED off; comment this out, if original LED purpose is required (magnetic too strong/weak, overcurrent, 36deg limit...)
+
+          //switch PA13 back to SWDIO behavior 
+          // TODO: this is still ugly and even does not work. SWDIO functionality is not restored by a simple LL_GPIO_MODE_INPUT. 
+          // Hitting RES manually or using BOOT0 is likely always required.
+
+        /*
+          GPIO_InitStruct.Pin = SENSORLESS_Pin;
+          GPIO_InitStruct.Mode = LL_GPIO_MODE_INPUT;   //LL_GPIO_MODE_ALTERNATE also does not restore SWDIO functionality
+          GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_HIGH;
+          GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
+          GPIO_InitStruct.Pull = LL_GPIO_PULL_UP;
+          LL_GPIO_Init(SENSORLESS_GPIO_Port, &GPIO_InitStruct);
+        */
+        }
+       
+
         iterm+=ki*e/32;//
 		#if 1
                 if(iterm>UMAXSUM)//
