@@ -248,6 +248,8 @@ extern int16_t value_Temp;
 extern uint8_t Currents_Set;
 extern uint8_t Microstep_Set;            //4->4096
 
+extern volatile uint8_t sensorless_trigger_counter;           //sensorless homing counter
+
 extern uint8_t Dir_Enable;           //
 extern uint8_t Motor_Dir;                  //
 extern uint8_t Motor_Enable;               //
