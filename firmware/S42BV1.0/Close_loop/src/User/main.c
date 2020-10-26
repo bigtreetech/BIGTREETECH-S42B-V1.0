@@ -592,6 +592,9 @@ int main(void)
     while(1)
     { 	
 /**************************************************************/
+	    
+	sensorless_counter();  // check global var for sensorless event to trigger endstop, e.g. collision
+	    
         if(Motor_ENmode_flag ==1){
             if(ENIN==1) {                            
                 restart_init();                              
@@ -1806,3 +1809,37 @@ void assert_failed(uint8_t* file, uint32_t line)
   * @}
   */
 
+
+/* 
+sensorless_count is taking the global variable sensorless_trigger_counter that is ++ and -- by the interrupt routine.
+If sufficient sensorless_event_counts are reached, the endstop is triggered.
+*/
+
+// The angle deviation from standstill is easily triggered even for higher angular devations.
+// To filter the normal noise during movement from a blockade a few deviations in series are required
+#define sensorless_event_count 2   
+
+void sensorless_counter()  
+{  
+  LL_GPIO_InitTypeDef GPIO_InitStruct;
+  
+  if (sensorless_trigger_counter >= sensorless_event_count)  
+  {
+    // this ugly GPIO init is placed here, as otherwise the SWD programming only works with holding RES(ET) right before programming (and too long = timeout).
+    // Running this init here makes programming possible with just resetting the board once and not triggering this function before programming.
+    GPIO_InitStruct.Pin = SENSORLESS_Pin;
+    GPIO_InitStruct.Mode = LL_GPIO_MODE_OUTPUT;
+    GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_HIGH;
+    GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
+    GPIO_InitStruct.Pull = LL_GPIO_PULL_UP;
+    LL_GPIO_Init(SENSORLESS_GPIO_Port, &GPIO_InitStruct);
+
+    SENSORLESS_L;  // trigger endstop by pulling pin LOW; will be set HIGH in interrupt routine again.
+      
+    LED_H;  // flash LED for debugging
+    LL_mDelay(500);
+
+    sensorless_trigger_counter = 0;
+  }
+
+}
