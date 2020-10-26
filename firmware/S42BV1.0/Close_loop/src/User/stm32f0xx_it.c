@@ -133,7 +133,7 @@ void TIM6_IRQHandler(void)
         // If it does not, you will have to hold the RES(ET) button manually until "hla_swd" is shown during openOCD programming. 
         // Releasing RES directly at this point will start the normal programming. Holding RES too long will result in a timeout.
         
-        #define sensorless_sensitivty 14  // adjust sensorloess homing sensitivty here. A value of 14 is triggering the endstop for 0.3deg deviation (16384 = 360deg)
+        #define sensorless_sensitivty 28  // adjust sensorloess homing sensitivty here. A value of 28 is triggering the endstop for 0.6deg deviation (16384 = 360deg)
         if(e>sensorless_sensitivty || e<-1*sensorless_sensitivty){  // triggering around 0.2deg deviation
           //enable SWDIO (PA13) as output pin 
 
