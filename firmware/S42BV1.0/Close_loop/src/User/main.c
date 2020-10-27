@@ -589,6 +589,7 @@ int main(void)
     MX_TIM1_Init();                                             //Tim1  Init
     MX_TIM6_Init();                                             //Tim6  Init 
     MX_IWDG_Init();                                             //Idog  Init
+    uint32_t OLED_reset_counter=0;
     while(1)
     { 	
 /**************************************************************/
@@ -663,8 +664,17 @@ int main(void)
         }
         KeyScan();                                      
         Oled_display();                                 
-        Motor_data_dis();                               
-
+        Motor_data_dis();
+        OLED_reset_counter++;
+        if (OLED_reset_counter>100000) //100.000 loops are close to 20sec for every re-init of the OLED
+        {                               
+          OLED_Init();  //brute force re-init the OLED every loop
+        //OLED_Clear();   //not required
+          OLED_ShowString(0,2,"Simp:       RPM");
+          OLED_ShowString(0,22," Err:     .   ");
+          OLED_ShowString(0,42," Deg:      . ");
+          OLED_reset_counter=0;
+        } 
     }
 }
 //Restart init 

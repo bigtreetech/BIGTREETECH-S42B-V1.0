@@ -60,8 +60,8 @@ void OLED_WR_Byte(uint8_t dat,uint8_t cmd)  //adding some NOPs to reduce jumpyne
 			asm volatile ( "nop":: ); 
 		}
 		else OLED_SDIN_L;
-		asm volatile ( "nop":: );  
-		asm volatile ( "nop":: ); 
+		//asm volatile ( "nop":: );  //makes things worse?
+		//asm volatile ( "nop":: ); 
 		
 		OLED_SCLK_H;   // this rising edge of SCLK triggers the sampling by the OLED SSD1306
 		/*asm volatile ( "nop":: ); // get close to 50:50 duty cycle on the clock
