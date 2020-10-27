@@ -241,7 +241,7 @@ void OLED_Init(void)
 	OLED_RST_H; 
 	OLED_WR_Byte(0xAE,OLED_CMD);//
 	OLED_WR_Byte(0xD5,OLED_CMD);//,
-	OLED_WR_Byte(0xF0,OLED_CMD);  // originally d80 changed to 0x00 but 0x80 would be default
+	OLED_WR_Byte(0xF0,OLED_CMD);  // originally d80 changed to 0xF0 (F_OSC: 480-590kHz) to stay away/over 450-460kHz DC buck converter freq. band
 	OLED_WR_Byte(0xA8,OLED_CMD);//
 	OLED_WR_Byte(0X3F,OLED_CMD);//(1/64) 
 	OLED_WR_Byte(0xD3,OLED_CMD);//
