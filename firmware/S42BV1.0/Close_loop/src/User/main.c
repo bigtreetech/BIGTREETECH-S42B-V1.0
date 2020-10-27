@@ -406,6 +406,8 @@ volatile uint8_t  Urat_CRC_Correct_flag=0;           //
 //uint8_t Receive_statu=0x00;
 int16_t value_Temp=0;
 
+volatile uint8_t sensorless_trigger_counter=0;
+
 //
 //ReadAddr:
 //pBuffer:
