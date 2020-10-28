@@ -169,7 +169,9 @@ extern int16_t u;
 extern int32_t stepnumber;              // Used in OneStep() function
 extern uint8_t stepangle;
 
+extern uint8_t menuActive;           // JaSw: In-menu = 1 else 0
 extern volatile uint32_t tickCount;     // JaSw: Counts ticks
+extern volatile uint32_t tim6Counter;   // JaSw: Counts timer 6 interrupts
 extern bool tuningMode;
 
 extern uint16_t hccount;
@@ -177,24 +179,24 @@ extern uint8_t closemode;
 extern uint8_t enmode;
 
 extern uint8_t Currents;          //800ma
-extern uint8_t Microstep;            //4->4096
+//extern uint8_t Microstep;            //4->4096
 extern uint8_t Motor_Dir;                  //
 
-extern volatile uint8_t Menu_update_flag;      //
+//extern volatile uint8_t Menu_update_flag;      //
 extern volatile uint8_t Data_update_flag;  
 extern volatile uint16_t Data_update_Count;
-extern uint8_t Menu_Num ;             //
-extern uint8_t Menu_Num_item;         //
-extern uint8_t Menu_move_num;         //
+//extern uint8_t Menu_Num ;             //
+//extern uint8_t Menu_Num_item;         //
+//extern uint8_t Menu_move_num;         //
 
-extern uint8_t CalibrateEncoder_finish_flag; //
-extern uint8_t Second_Calibrate_flag; //
-extern uint8_t Second_Menu;           //
-extern uint8_t Menu_Num2_item;        //  
-extern uint8_t Menu_Num3_item;        //
-extern uint8_t Menu_Num4_item;        //
-extern uint8_t Menu_Num5_item;        // 
-extern uint8_t Menu_Num6_item;        // 
+//extern uint8_t CalibrateEncoder_finish_flag; //
+//extern uint8_t Second_Calibrate_flag; //
+// extern uint8_t Second_Menu;           //
+// extern uint8_t Menu_Num2_item;        //  
+// extern uint8_t Menu_Num3_item;        //
+// extern uint8_t Menu_Num4_item;        //
+// extern uint8_t Menu_Num5_item;        // 
+// extern uint8_t Menu_Num6_item;        // 
 extern uint8_t Calibration_flag;      //
 extern int16_t Motor_speed ;
 extern int16_t wap1;
@@ -203,33 +205,35 @@ extern int16_t Motor_speed_count;
 extern uint8_t start_measu_V_flag;
 extern uint8_t measure_once_flag;
 
-extern volatile uint8_t flash_store_flag;
+//extern volatile uint8_t flash_store_flag;
 extern uint16_t table1[14];                    //
 
-extern uint8_t Rx1_buff[8];
-extern uint8_t Receive_Count;
-extern uint8_t Rx1_temp_num;                       
-extern uint8_t Receive_finish_flag;          //
-extern volatile uint8_t  Communications_Process_flag;     //
-extern volatile uint8_t  Uart_CRC_flag;                   //  
-extern volatile uint8_t  frame_Error_flag;                //
-extern volatile uint8_t  Urat_CRC_Correct_flag;           //
-extern int16_t value_Temp;
-extern uint8_t Currents_Set;
-extern uint8_t Microstep_Set;            //4->4096
+//extern uint8_t Rx1_buff[8];
+//extern uint8_t Receive_Count;
+//extern uint8_t Rx1_temp_num;                       
+//extern uint8_t Receive_finish_flag;          //
+//extern volatile uint8_t  Communications_Process_flag;     //
+//extern volatile uint8_t  Uart_CRC_flag;                   //  
+//extern volatile uint8_t  frame_Error_flag;                //
+//extern volatile uint8_t  Urat_CRC_Correct_flag;           //
+//extern int16_t value_Temp;
+//extern uint8_t Currents_Set;
+//extern uint8_t Microstep_Set;            //4->4096
 
-extern uint8_t Dir_Enable;           //
+//extern uint8_t Dir_Enable;           //
 extern uint8_t Motor_Dir;                  //
 extern uint8_t Motor_Enable;               //
-extern uint8_t Motor_mode;              //
+//extern uint8_t Motor_mode;              //
 extern volatile uint8_t Motor_ENmode_flag; //
-extern volatile uint8_t enter1_once_flag ;    //
-extern volatile uint8_t enter2_once_flag ;
-extern volatile uint8_t dir1_once_flag ;      //
-extern volatile uint8_t dir2_once_flag ;
-extern volatile uint8_t close_loop1_flag ;      //
-extern volatile uint8_t close_loop2_flag ;
+//extern volatile uint8_t enter1_once_flag ;    //
+//extern volatile uint8_t enter2_once_flag ;
+//extern volatile uint8_t dir1_once_flag ;      //
+//extern volatile uint8_t dir2_once_flag ;
+//extern volatile uint8_t close_loop1_flag ;      //
+//extern volatile uint8_t close_loop2_flag ;
 
+void CalibrateEncoder(void);
+void StoreCurrentParameters();
 extern void Output(int32_t theta,uint8_t effort);
 extern uint16_t ReadValue(uint16_t RegValue);
 extern uint16_t ReadAngle(void);

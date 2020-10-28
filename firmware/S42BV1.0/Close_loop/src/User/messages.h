@@ -68,6 +68,7 @@ struct Serial_Msg_GetParam
 struct Serial_Msg_SetParam
 {
     uint8_t source;
+    int16_t value;
 }__attribute__((packed));  
 
 

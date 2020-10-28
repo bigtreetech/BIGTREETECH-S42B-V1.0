@@ -1,0 +1,10 @@
+C:\Users\Jan\source\repos\TrueStepTerminal\TrueStepTerminal\bin\Debug\TrueStepTerminal.exe.config
+C:\Users\Jan\source\repos\TrueStepTerminal\TrueStepTerminal\bin\Debug\TrueStepTerminal.exe
+C:\Users\Jan\source\repos\TrueStepTerminal\TrueStepTerminal\bin\Debug\TrueStepTerminal.pdb
+C:\Users\Jan\source\repos\TrueStepTerminal\TrueStepTerminal\obj\Debug\TrueStepTerminal.csprojAssemblyReference.cache
+C:\Users\Jan\source\repos\TrueStepTerminal\TrueStepTerminal\obj\Debug\TrueStepTerminal.frmMain.resources
+C:\Users\Jan\source\repos\TrueStepTerminal\TrueStepTerminal\obj\Debug\TrueStepTerminal.Properties.Resources.resources
+C:\Users\Jan\source\repos\TrueStepTerminal\TrueStepTerminal\obj\Debug\TrueStepTerminal.csproj.GenerateResource.cache
+C:\Users\Jan\source\repos\TrueStepTerminal\TrueStepTerminal\obj\Debug\TrueStepTerminal.csproj.CoreCompileInputs.cache
+C:\Users\Jan\source\repos\TrueStepTerminal\TrueStepTerminal\obj\Debug\TrueStepTerminal.exe
+C:\Users\Jan\source\repos\TrueStepTerminal\TrueStepTerminal\obj\Debug\TrueStepTerminal.pdb

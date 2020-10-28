@@ -39,6 +39,7 @@ void OLED_WR_Byte(u8 dat,u8 cmd)
 void OLED_WR_Byte(uint8_t dat,uint8_t cmd)
 {	
 	uint8_t i;	
+	//LL_TIM_DisableCounter(TIM6);				//JaSw: Maybe helps with OLED issues but haven't tested yet.
     if(cmd)    
         OLED_RS_H; 
     else 
@@ -53,7 +54,8 @@ void OLED_WR_Byte(uint8_t dat,uint8_t cmd)
 		dat<<=1;   
 	}				 
 	OLED_CS_H;		  
-	OLED_RS_H;   	  
+	OLED_RS_H;  
+	//LL_TIM_EnableCounter(TIM6); 	  
 } 
 #endif	     
 

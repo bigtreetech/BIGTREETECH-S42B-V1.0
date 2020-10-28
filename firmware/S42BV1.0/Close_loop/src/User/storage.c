@@ -2,6 +2,7 @@
 
 uint16_t STMFLASH_BUF[STM_SECTOR_SIZE/2];
 
+
 void STMFLASH_Read(uint32_t ReadAddr,uint16_t *pBuffer,uint16_t NumToRead)   	
 {
 	uint16_t i;
@@ -82,4 +83,30 @@ void STMFLASH_Write(uint32_t WriteAddr,uint16_t *pBuffer,uint16_t NumToWrite)
 		}	 
 	};	
 	FlashLock();
+}
+
+
+void StoreCurrentParameters()
+{
+  LED_H;
+
+  table1[0]   = 0xAA;                 
+  table1[1]   = Currents;
+  //table1[2]   = 16;
+  table1[3]   = stepangle;
+  //table1[4]   = 3;
+  table1[5]   = Motor_ENmode_flag;
+  //table1[6]   = 1;
+  table1[7]   = Motor_Dir;
+  //table1[8]   = 1;
+  table1[11]  = kp;                  
+  table1[12]  = ki;
+  table1[13]  = kd;
+
+  NVIC_DisableIRQ(USART1_IRQn);
+  STMFLASH_Write(Data_Store_Address, table1, 14);
+  NVIC_EnableIRQ(USART1_IRQn);
+
+  LL_mDelay(250);
+  LED_L;
 }

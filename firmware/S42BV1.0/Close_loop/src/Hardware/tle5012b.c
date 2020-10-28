@@ -13,6 +13,22 @@ void TLE5012B_Init()
     GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
     GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
     LL_GPIO_Init(NSS_GPIO_Port, &GPIO_InitStruct);
+
+    // Angle range 360°
+    WriteValue(WRITE_MOD2_VALUE, MOD2_VALUE);
+}
+
+
+bool CheckHealth()
+{
+  // Read status register
+  uint16_t state = ReadState();
+ 
+  // Check for Magnitude out of limit error
+  if(state&0x0080)
+  {
+
+  }
 }
 
 

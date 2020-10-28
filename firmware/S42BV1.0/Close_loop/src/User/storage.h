@@ -15,7 +15,7 @@
  * ----------   -----------
  * 0            Calibration Flag. Calibrated = 0xAA
  * 1            Motor Current
- * 2
+ * 2            
  * 3            Step Size
  * 4
  * 5            Motor Enable Mode
@@ -24,6 +24,7 @@
  * 
  */
 #include "flash.h"
+#include "main.h"
 
 #define STM32_FLASH_SIZE 64
 #define STM32_FLASH_BASE        0x8000000           // SOC Flash Base Address 

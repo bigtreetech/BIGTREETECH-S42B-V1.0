@@ -6,6 +6,7 @@
  * 
 */
 #include "stdio.h"
+#include "stdbool.h"
 #include "stm32f0xx_ll_spi.h"
 #include "stm32f0xx_ll_gpio.h"
 
@@ -42,6 +43,8 @@
 
 
 void TLE5012B_Init();
+
+bool CheckHealth();
 
 // Reads the specified register
 uint16_t ReadValue(uint16_t RegAdd);
