@@ -61,6 +61,8 @@ void SoftStep(uint8_t direction);
 void SoftMoveStep();
 // Parse bytes received from the UART
 void ParseBytes(uint8_t data);
+// Stops program execution and loads the bootloader
+void InvokeBootloader();
 
 // JaSw: Do they need to be signed?
 int16_t kp=30;                //
@@ -150,7 +152,7 @@ int main(void)
 
     // JaSw: Disable calibration check while testing code
     //Calibration_flag = 0xAA;
-
+    
     if(Calibration_flag == 0xAA)
     {
         ShowCalibrateOKScreen();
@@ -363,6 +365,38 @@ void OledMenu(void)
 }
 
 
+void InvokeBootloader()
+{
+  // Function pointer to bootloader in system memory
+  // Referenced from AN2606 Rev.44 Table 141. 
+  // The first word is the stack pointer and therefore the 4 byte offset.
+  void (*BootMemJump)(void) = (*((uint32_t*) 0x1FFFEC04));
+
+  // De-initialize UART1 as it will be used by the bootloader
+  LL_USART_DeInit(USART1);
+
+  // De-initialize RCC
+  LL_RCC_DeInit();
+
+  // Stop SysTick timer
+  SysTick->CTRL = 0;
+  SysTick->LOAD = 0;
+  SysTick->VAL = 0;
+
+  // Disable interrupts
+  __disable_irq();
+  
+  __DSB();  
+  __ISB();
+  
+  // Set Main Stack Pointer
+  __set_MSP(0x20001000);
+  
+  // Jump to bootloader
+  BootMemJump();
+}
+
+
 // Parse bytes received from the UART
 void ParseBytes(uint8_t data)
 {
@@ -526,6 +560,10 @@ void ParseBytes(uint8_t data)
             streamAngle = false;
             tuningMode = false;
           }
+        }
+        if (parseBuffer[2] == SERIAL_MSG_COMMAND_JUMP_BOOTLOADER)
+        {
+          InvokeBootloader();
         }
 
       break;
