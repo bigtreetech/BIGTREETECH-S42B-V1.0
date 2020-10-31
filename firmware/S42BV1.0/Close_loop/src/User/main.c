@@ -666,7 +666,7 @@ int main(void)
         Oled_display();                                 
         Motor_data_dis();
         OLED_reset_counter++;
-        if (OLED_reset_counter>100000) //100.000 loops are close to 20sec for every re-init of the OLED
+        if (OLED_reset_counter>300000) //100.000 loops are close to 20sec for every re-init of the OLED; resetting once every minute seems reasonable
         {                               
           OLED_Init();  //brute force re-init the OLED every loop
         //OLED_Clear();   //not required
