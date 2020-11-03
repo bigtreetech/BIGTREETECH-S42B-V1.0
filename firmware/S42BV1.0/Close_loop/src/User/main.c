@@ -12,6 +12,7 @@
 #include "display.h"
 #include "usart.h"
 
+
 //sin cos  
 const int16_t sin_1[] = 
 {
@@ -285,7 +286,6 @@ static void MX_TIM3_Init(void);
 static void MX_TIM6_Init(void);
 static void MX_IWDG_Init(void);
 
-
 void SetModeCheck(void);
 void UsDelay(uint16_t us);
 void Output(int32_t theta,uint8_t effort);
@@ -405,6 +405,8 @@ volatile uint8_t  frame_Error_flag=0;                //
 volatile uint8_t  Urat_CRC_Correct_flag=0;           //
 //uint8_t Receive_statu=0x00;
 int16_t value_Temp=0;
+
+volatile uint8_t sensorless_trigger_counter=0;
 
 //
 //ReadAddr:
@@ -589,8 +591,11 @@ int main(void)
     MX_TIM1_Init();                                             //Tim1  Init
     MX_TIM6_Init();                                             //Tim6  Init 
     MX_IWDG_Init();                                             //Idog  Init
+    uint32_t OLED_reset_counter=0;
     while(1)
     { 	
+          
+      sensorless_counter();
 /**************************************************************/
         if(Motor_ENmode_flag ==1){
             if(ENIN==1) {                            
@@ -663,8 +668,17 @@ int main(void)
         }
         KeyScan();                                      
         Oled_display();                                 
-        Motor_data_dis();                               
-
+        Motor_data_dis();
+        OLED_reset_counter++;
+        if (OLED_reset_counter>300000) //100.000 loops are close to 20sec for every re-init of the OLED; resetting once every minute seems reasonable
+        {                               
+          OLED_Init();  //brute force re-init the OLED every loop
+        //OLED_Clear();   //not required
+          OLED_ShowString(0,2,"Simp:       RPM");
+          OLED_ShowString(0,22," Err:     .   ");
+          OLED_ShowString(0,42," Deg:      . ");
+          OLED_reset_counter=0;
+        } 
     }
 }
 //Restart init 
@@ -1228,6 +1242,24 @@ static void MX_GPIO_Init(void)
   LL_GPIO_Init(OLED_RST_GPIO_Port, &GPIO_InitStruct);
   
 /*************************************************/
+/***************sensorless homing IO **********************************/
+// to keep SWD programming working, the pin init is done the ugly way in the sensorless homing function in stm32f0xx_it.c
+// Still, on-the-fly SWD programming might not work in all cases.
+// If this happens, you will have to hold the RES(ET) button manually until "hla_swd" is shown during openOCD programming (standard for vscode+platform.io with stlink). 
+// Releasing RES directly at this point will start the normal programming. Holding RES too long will result in a timeout.
+
+  /*
+  GPIO_InitStruct.Pin = SENSORLESS_Pin;
+  GPIO_InitStruct.Mode = LL_GPIO_MODE_OUTPUT;
+  GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_HIGH;
+  GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
+  GPIO_InitStruct.Pull = LL_GPIO_PULL_UP;
+  LL_GPIO_Init(SENSORLESS_GPIO_Port, &GPIO_InitStruct);
+  */
+
+
+/*************************************************/
+
   GPIO_InitStruct.Pin = LED_Pin;
   GPIO_InitStruct.Mode = LL_GPIO_MODE_OUTPUT;
   GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_HIGH;
@@ -1736,10 +1768,14 @@ void CalibrateEncoder(void)
     //
     flash_store_flag =1;            //
     table1[0] =0xAA;                //
-    table1[1] =128;table1[2] =16;
-    table1[3] =4;table1[4] =3;
-    table1[5] =0;table1[6] =1;
-    table1[7] =1;table1[8] =1;
+    table1[1] =128;
+    table1[2] =16;
+    table1[3] =4;
+    table1[4] =3;
+    table1[5] =0;
+    table1[6] =1;
+    table1[7] =1;
+    table1[8] =1;
     table1[11]=kp;                  //
     table1[12]=ki;
     table1[13]=kd;
@@ -1780,6 +1816,41 @@ void assert_failed(uint8_t* file, uint32_t line)
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */
+
+
+/* 
+sensorless_count is taking the global variable sensorless_trigger_counter that is ++ and -- by the interrupt routine.
+If sufficient sensorless_event_counts are reached, the endstop is triggered.
+*/
+
+// The angle deviation from standstill is easily triggered even for higher angular devations.
+// To filter the normal noise during movement from a blockade a few deviations in series are required
+#define sensorless_event_count 2   
+
+void sensorless_counter()  
+{  
+  LL_GPIO_InitTypeDef GPIO_InitStruct;
+  
+  if (sensorless_trigger_counter >= sensorless_event_count)  
+  {
+    // this ugly GPIO init is placed here, as otherwise the SWD programming only works with holding RES(ET) right before programming (and too long = timeout).
+    // Running this init here makes programming possible with just resetting the board once and not triggering this function before programming.
+    GPIO_InitStruct.Pin = SENSORLESS_Pin;
+    GPIO_InitStruct.Mode = LL_GPIO_MODE_OUTPUT;
+    GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_HIGH;
+    GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
+    GPIO_InitStruct.Pull = LL_GPIO_PULL_UP;
+    LL_GPIO_Init(SENSORLESS_GPIO_Port, &GPIO_InitStruct);
+
+    SENSORLESS_L;  // trigger endstop by pulling pin LOW; will be set HIGH in interrupt routine again.
+      
+    LED_H;  // flash LED for debugging
+    LL_mDelay(500);
+
+    sensorless_trigger_counter = 0;
+  }
+
+}
 
 /**
   * @}
