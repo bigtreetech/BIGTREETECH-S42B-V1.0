@@ -117,7 +117,7 @@ uint32_t prevTim6Counter;
 bool SoftEnable = 0;                    // JaSw: Software motor enable
 uint16_t softMoveStepCount;
 uint8_t softMoveDirection;
-
+uint8_t oledClock = 0x00;
 bool streamAngle;
 bool tuningMode;                        // JaSw: Indicates tuning mode, where some normal features are disabled
 
@@ -367,6 +367,10 @@ void OledMenu(void)
 
 void InvokeBootloader()
 {
+  // Leaving the watchdog enabled, so if no programming attempt is
+  // made while in bootloader mode the watchdog times out and restarts
+  // normal program execution.
+
   // Function pointer to bootloader in system memory
   // Referenced from AN2606 Rev.44 Table 141. 
   // The first word is the stack pointer and therefore the 4 byte offset.
@@ -563,6 +567,7 @@ void ParseBytes(uint8_t data)
         }
         if (parseBuffer[2] == SERIAL_MSG_COMMAND_JUMP_BOOTLOADER)
         {
+          ShowBootloaderScreen();
           InvokeBootloader();
         }
 
@@ -795,7 +800,7 @@ static void MX_TIM3_Init(void)
 
   TIM_InitStruct.Prescaler = 0;
   TIM_InitStruct.CounterMode = LL_TIM_COUNTERMODE_UP;
-  TIM_InitStruct.Autoreload = 256;                              // JaSw: Determine PWM freq. 48MHz / 256 = 187.5kHz
+  TIM_InitStruct.Autoreload = 256;                              // JaSw: Determine PWM freq. 48MHz / 256 = 187.5kHz. 256 = 8bit resolution
   TIM_InitStruct.ClockDivision = LL_TIM_CLOCKDIVISION_DIV1;
   LL_TIM_Init(TIM3, &TIM_InitStruct);
 
@@ -1415,6 +1420,14 @@ void CalibrateEncoder(void)
     LED_F;
     LL_mDelay(200);
   }
+}
+
+
+// Change the Display Clock Divide Ratio/Oscillator Frequency
+// Experimental feature
+void ChangeOLEDClock()
+{
+  OLED_SetDisplayClock(oledClock);
 }
 
 

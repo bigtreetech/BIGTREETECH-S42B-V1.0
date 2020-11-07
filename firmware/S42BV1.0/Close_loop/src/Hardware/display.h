@@ -21,5 +21,7 @@ void ShowCalibrateOKScreen();
 
 void ShowCalibrateCompleteScreen();
 
+void ShowBootloaderScreen();
+
 #endif
 

@@ -173,6 +173,7 @@ extern uint8_t menuActive;           // JaSw: In-menu = 1 else 0
 extern volatile uint32_t tickCount;     // JaSw: Counts ticks
 extern volatile uint32_t tim6Counter;   // JaSw: Counts timer 6 interrupts
 extern bool tuningMode;
+extern uint8_t oledClock;               // JaSw: Holds OLED Display Clock Divide Ratio/Oscillator Frequency
 
 extern uint16_t hccount;
 extern uint8_t closemode;
@@ -234,6 +235,7 @@ extern volatile uint8_t Motor_ENmode_flag; //
 
 void CalibrateEncoder(void);
 void StoreCurrentParameters();
+void ChangeOLEDClock();
 extern void Output(int32_t theta,uint8_t effort);
 extern uint16_t ReadValue(uint16_t RegValue);
 extern uint16_t ReadAngle(void);

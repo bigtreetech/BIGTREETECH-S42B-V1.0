@@ -128,7 +128,8 @@ void Menu_Show(struct Menu *menu)
                 UInt16ToStr(val);
                 draw(92, (i * 16), numBuf);
             }
-            if (menu->items[itemIndex]->type == MENU_ITEM_TYPE_VARIABLE_UINT8)
+            if ((menu->items[itemIndex]->type == MENU_ITEM_TYPE_VARIABLE_UINT8) ||
+                (menu->items[itemIndex]->type == MENU_ITEM_TYPE_ACTION_VAR_UINT8))
             {
                 uint16_t val = *(uint8_t*)menu->items[itemIndex]->variable.value;
 
@@ -166,7 +167,8 @@ void Menu_Button_Down(struct Menu *menu)
 
 void Menu_Variable_Change(struct Menu *menu, int16_t val)
 {
-    if (menu->items[menu->selectedItemIndex]->type == MENU_ITEM_TYPE_VARIABLE_UINT8)
+    if ((menu->items[menu->selectedItemIndex]->type == MENU_ITEM_TYPE_VARIABLE_UINT8) ||
+        (menu->items[menu->selectedItemIndex]->type == MENU_ITEM_TYPE_ACTION_VAR_UINT8))
     {
         // Check if increase would be above the maximum value
         if ((*(uint8_t*)menu->items[menu->selectedItemIndex]->variable.value + val) <= (menu->items[menu->selectedItemIndex]->variable.maxValue))
@@ -251,7 +253,12 @@ void Menu_Select_Edit(struct Menu *menu)
     }
 
     if (menu->items[menu->selectedItemIndex]->inEditMode)
+    {
         menu->items[menu->selectedItemIndex]->inEditMode = false;
+
+        if (menu->items[menu->selectedItemIndex]->type == MENU_ITEM_TYPE_ACTION_VAR_UINT8)
+            menu->items[menu->selectedItemIndex]->action();
+    }
     else
         menu->items[menu->selectedItemIndex]->inEditMode = true;  
 

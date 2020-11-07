@@ -8,17 +8,18 @@
 #include "stdio.h"
 #include "stdbool.h"
 
-#define MENU_MAX_ITEMS      10
+#define MENU_MAX_ITEMS      12
 #define MENU_SCREEN_ROWS    4
 
 struct Menu;
 
 enum MENU_ITEM_TYPE
 {
-    MENU_ITEM_TYPE_LABEL            = 0,
-    MENU_ITEM_TYPE_VARIABLE_UINT8   = 1,
-    MENU_ITEM_TYPE_VARIABLE_UINT16  = 2,
-    MENU_ITEM_TYPE_ACTION           = 3,
+    MENU_ITEM_TYPE_LABEL                = 0,
+    MENU_ITEM_TYPE_VARIABLE_UINT8       = 1,
+    MENU_ITEM_TYPE_VARIABLE_UINT16      = 2,
+    MENU_ITEM_TYPE_ACTION               = 3,    // Calls action function
+    MENU_ITEM_TYPE_ACTION_VAR_UINT8     = 4,    // Can edit variable but calls action when exiting edit mode  
 };
 
 // Function pointer type for drawing rows of text to the screen

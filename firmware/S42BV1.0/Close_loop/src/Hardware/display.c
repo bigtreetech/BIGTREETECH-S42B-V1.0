@@ -12,6 +12,7 @@ struct menuItem menuItemDirectionPin;
 struct menuItem menuItemPID_P;
 struct menuItem menuItemPID_I;
 struct menuItem menuItemPID_D;
+struct menuItem menuItemOLEDFreq;
 struct menuItem menuItemSave;
 struct menuItem menuItemExit;
 
@@ -92,6 +93,13 @@ void ShowCalibrateCompleteScreen()
 }
 
 
+void ShowBootloaderScreen()
+{
+    OLED_Clear();
+    OLED_ShowString(32,25,"Running");
+    OLED_ShowString(16,45,"Bootloader");
+}
+
 void ExitMenu()
 {
   menuActive = 0;
@@ -155,6 +163,12 @@ void BuildMenu()
   menuItemPID_D.type = MENU_ITEM_TYPE_VARIABLE_UINT16;
   menuItemPID_D.variable.value = &kd;
 
+  Menu_Item_Init(&menuItemOLEDFreq);
+  menuItemOLEDFreq.title = "OLED Freq";
+  menuItemOLEDFreq.type = MENU_ITEM_TYPE_ACTION_VAR_UINT8;
+  menuItemOLEDFreq.variable.value = &oledClock;
+  menuItemOLEDFreq.action = &ChangeOLEDClock;
+
   Menu_Item_Init(&menuItemSave);
   menuItemSave.title = "Save";
   menuItemSave.type = MENU_ITEM_TYPE_ACTION;
@@ -174,6 +188,7 @@ void BuildMenu()
   Menu_Add_Item(&menuMain, &menuItemPID_P);
   Menu_Add_Item(&menuMain, &menuItemPID_I);
   Menu_Add_Item(&menuMain, &menuItemPID_D);
+  Menu_Add_Item(&menuMain, &menuItemOLEDFreq);
   Menu_Add_Item(&menuMain, &menuItemSave);
   Menu_Add_Item(&menuMain, &menuItemExit);
 
