@@ -14,4 +14,4 @@ This project was forked from the BIGTREETECH-S42B-V1.0 repo. Since I started to 
   - Simpler navigation
   - Adjustment of PID gains
 
-To ease configuration and to access more advanced features you can use [TrueStepTerminal](utils/TrueStepTerminal/README.md).
+To ease configuration and to access more advanced features you can use [TrueStepTerminal](utils/TrueStepTerminal).
