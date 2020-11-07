@@ -59,6 +59,7 @@ namespace TrueStepTerminal
             MODE_CLOSELOOP  = 12,
             MODE_OPENLOOP   = 13,
             STREAM_ANGLE    = 20,
+            JUMP_BOOTLOADER = 30,
         }
 
         [Serializable]

@@ -28,6 +28,7 @@
         /// </summary>
         private void InitializeComponent()
         {
+            this.components = new System.ComponentModel.Container();
             this.grpParameters = new System.Windows.Forms.GroupBox();
             this.chkWriteToFlash = new System.Windows.Forms.CheckBox();
             this.btnWriteParameters = new System.Windows.Forms.Button();
@@ -49,6 +50,14 @@
             this.rdOpenLoop = new System.Windows.Forms.RadioButton();
             this.chkEnable = new System.Windows.Forms.CheckBox();
             this.btnControlStep = new System.Windows.Forms.Button();
+            this.tabPageTuning = new System.Windows.Forms.TabPage();
+            this.btnAutoTune = new System.Windows.Forms.Button();
+            this.chkTuningEnable = new System.Windows.Forms.CheckBox();
+            this.tabPageFirmware = new System.Windows.Forms.TabPage();
+            this.btnBrowseFirmware = new System.Windows.Forms.Button();
+            this.label10 = new System.Windows.Forms.Label();
+            this.txtFirmwareUploadPath = new System.Windows.Forms.TextBox();
+            this.btnFirmwareUpload = new System.Windows.Forms.Button();
             this.tabPageExperimental = new System.Windows.Forms.TabPage();
             this.label7 = new System.Windows.Forms.Label();
             this.cmbStepLoop = new System.Windows.Forms.ComboBox();
@@ -66,9 +75,10 @@
             this.cmbPortBaud = new System.Windows.Forms.ComboBox();
             this.cmbPortName = new System.Windows.Forms.ComboBox();
             this.btnClose = new System.Windows.Forms.Button();
-            this.tabPageTuning = new System.Windows.Forms.TabPage();
-            this.chkTuningEnable = new System.Windows.Forms.CheckBox();
-            this.btnAutoTune = new System.Windows.Forms.Button();
+            this.chkBTTProtocol = new System.Windows.Forms.CheckBox();
+            this.toolTips = new System.Windows.Forms.ToolTip(this.components);
+            this.label11 = new System.Windows.Forms.Label();
+            this.btnFirmwareDownload = new System.Windows.Forms.Button();
             this.grpParameters.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.dataGridViewParameters)).BeginInit();
             this.grpOverview.SuspendLayout();
@@ -76,9 +86,10 @@
             this.tabControls.SuspendLayout();
             this.tabPageMain.SuspendLayout();
             this.groupBox1.SuspendLayout();
+            this.tabPageTuning.SuspendLayout();
+            this.tabPageFirmware.SuspendLayout();
             this.tabPageExperimental.SuspendLayout();
             this.grpConnection.SuspendLayout();
-            this.tabPageTuning.SuspendLayout();
             this.SuspendLayout();
             // 
             // grpParameters
@@ -87,7 +98,7 @@
             this.grpParameters.Controls.Add(this.btnWriteParameters);
             this.grpParameters.Controls.Add(this.btnReadParameters);
             this.grpParameters.Controls.Add(this.dataGridViewParameters);
-            this.grpParameters.Location = new System.Drawing.Point(12, 164);
+            this.grpParameters.Location = new System.Drawing.Point(12, 195);
             this.grpParameters.Name = "grpParameters";
             this.grpParameters.Size = new System.Drawing.Size(400, 202);
             this.grpParameters.TabIndex = 1;
@@ -141,7 +152,7 @@
             this.grpOverview.Controls.Add(this.lblAngleValue);
             this.grpOverview.Controls.Add(this.btnControlGetAngle);
             this.grpOverview.Controls.Add(this.label8);
-            this.grpOverview.Location = new System.Drawing.Point(12, 72);
+            this.grpOverview.Location = new System.Drawing.Point(12, 103);
             this.grpOverview.Name = "grpOverview";
             this.grpOverview.Size = new System.Drawing.Size(400, 86);
             this.grpOverview.TabIndex = 2;
@@ -197,7 +208,7 @@
             // gprControls
             // 
             this.gprControls.Controls.Add(this.tabControls);
-            this.gprControls.Location = new System.Drawing.Point(12, 372);
+            this.gprControls.Location = new System.Drawing.Point(12, 403);
             this.gprControls.Name = "gprControls";
             this.gprControls.Size = new System.Drawing.Size(400, 157);
             this.gprControls.TabIndex = 3;
@@ -208,6 +219,7 @@
             // 
             this.tabControls.Controls.Add(this.tabPageMain);
             this.tabControls.Controls.Add(this.tabPageTuning);
+            this.tabControls.Controls.Add(this.tabPageFirmware);
             this.tabControls.Controls.Add(this.tabPageExperimental);
             this.tabControls.Location = new System.Drawing.Point(9, 19);
             this.tabControls.Name = "tabControls";
@@ -305,6 +317,89 @@
             this.btnControlStep.Text = "Step";
             this.btnControlStep.UseVisualStyleBackColor = true;
             this.btnControlStep.Click += new System.EventHandler(this.btnControlStep_Click);
+            // 
+            // tabPageTuning
+            // 
+            this.tabPageTuning.Controls.Add(this.btnAutoTune);
+            this.tabPageTuning.Controls.Add(this.chkTuningEnable);
+            this.tabPageTuning.Location = new System.Drawing.Point(4, 22);
+            this.tabPageTuning.Name = "tabPageTuning";
+            this.tabPageTuning.Size = new System.Drawing.Size(377, 106);
+            this.tabPageTuning.TabIndex = 2;
+            this.tabPageTuning.Text = "Tuning";
+            this.tabPageTuning.UseVisualStyleBackColor = true;
+            // 
+            // btnAutoTune
+            // 
+            this.btnAutoTune.Location = new System.Drawing.Point(3, 80);
+            this.btnAutoTune.Name = "btnAutoTune";
+            this.btnAutoTune.Size = new System.Drawing.Size(75, 23);
+            this.btnAutoTune.TabIndex = 17;
+            this.btnAutoTune.Text = "Auto Tune";
+            this.btnAutoTune.UseVisualStyleBackColor = true;
+            this.btnAutoTune.Click += new System.EventHandler(this.btnAutoTune_Click);
+            // 
+            // chkTuningEnable
+            // 
+            this.chkTuningEnable.AutoSize = true;
+            this.chkTuningEnable.Location = new System.Drawing.Point(3, 12);
+            this.chkTuningEnable.Name = "chkTuningEnable";
+            this.chkTuningEnable.Size = new System.Drawing.Size(100, 17);
+            this.chkTuningEnable.TabIndex = 16;
+            this.chkTuningEnable.Text = "Enable Logging";
+            this.chkTuningEnable.UseVisualStyleBackColor = true;
+            this.chkTuningEnable.CheckedChanged += new System.EventHandler(this.chkTuningEnable_CheckedChanged);
+            // 
+            // tabPageFirmware
+            // 
+            this.tabPageFirmware.Controls.Add(this.btnFirmwareDownload);
+            this.tabPageFirmware.Controls.Add(this.label11);
+            this.tabPageFirmware.Controls.Add(this.btnBrowseFirmware);
+            this.tabPageFirmware.Controls.Add(this.label10);
+            this.tabPageFirmware.Controls.Add(this.txtFirmwareUploadPath);
+            this.tabPageFirmware.Controls.Add(this.btnFirmwareUpload);
+            this.tabPageFirmware.Location = new System.Drawing.Point(4, 22);
+            this.tabPageFirmware.Name = "tabPageFirmware";
+            this.tabPageFirmware.Size = new System.Drawing.Size(377, 106);
+            this.tabPageFirmware.TabIndex = 3;
+            this.tabPageFirmware.Text = "Firmware Upload";
+            this.tabPageFirmware.UseVisualStyleBackColor = true;
+            // 
+            // btnBrowseFirmware
+            // 
+            this.btnBrowseFirmware.Location = new System.Drawing.Point(293, 21);
+            this.btnBrowseFirmware.Name = "btnBrowseFirmware";
+            this.btnBrowseFirmware.Size = new System.Drawing.Size(75, 23);
+            this.btnBrowseFirmware.TabIndex = 20;
+            this.btnBrowseFirmware.Text = "&Browse";
+            this.btnBrowseFirmware.UseVisualStyleBackColor = true;
+            this.btnBrowseFirmware.Click += new System.EventHandler(this.btnBrowseFirmware_Click);
+            // 
+            // label10
+            // 
+            this.label10.AutoSize = true;
+            this.label10.Location = new System.Drawing.Point(3, 7);
+            this.label10.Name = "label10";
+            this.label10.Size = new System.Drawing.Size(65, 13);
+            this.label10.TabIndex = 19;
+            this.label10.Text = "Firmware file";
+            // 
+            // txtFirmwareUploadPath
+            // 
+            this.txtFirmwareUploadPath.Location = new System.Drawing.Point(3, 23);
+            this.txtFirmwareUploadPath.Name = "txtFirmwareUploadPath";
+            this.txtFirmwareUploadPath.Size = new System.Drawing.Size(284, 20);
+            this.txtFirmwareUploadPath.TabIndex = 18;
+            // 
+            // btnFirmwareUpload
+            // 
+            this.btnFirmwareUpload.Location = new System.Drawing.Point(293, 50);
+            this.btnFirmwareUpload.Name = "btnFirmwareUpload";
+            this.btnFirmwareUpload.Size = new System.Drawing.Size(75, 23);
+            this.btnFirmwareUpload.TabIndex = 17;
+            this.btnFirmwareUpload.Text = "Upload";
+            this.btnFirmwareUpload.UseVisualStyleBackColor = true;
+            this.btnFirmwareUpload.Click += new System.EventHandler(this.btnFirmwareUpload_Click);
             // 
             // tabPageExperimental
             // 
@@ -434,6 +529,7 @@
             // 
             // grpConnection
             // 
+            this.grpConnection.Controls.Add(this.chkBTTProtocol);
             this.grpConnection.Controls.Add(this.btnConnect);
             this.grpConnection.Controls.Add(this.label2);
             this.grpConnection.Controls.Add(this.label1);
@@ -441,7 +537,7 @@
             this.grpConnection.Controls.Add(this.cmbPortName);
             this.grpConnection.Location = new System.Drawing.Point(12, 12);
             this.grpConnection.Name = "grpConnection";
-            this.grpConnection.Size = new System.Drawing.Size(400, 54);
+            this.grpConnection.Size = new System.Drawing.Size(400, 85);
             this.grpConnection.TabIndex = 4;
             this.grpConnection.TabStop = false;
             this.grpConnection.Text = "Connection";
@@ -493,7 +589,7 @@
             // 
             // btnClose
             // 
-            this.btnClose.Location = new System.Drawing.Point(337, 535);
+            this.btnClose.Location = new System.Drawing.Point(337, 566);
             this.btnClose.Name = "btnClose";
             this.btnClose.Size = new System.Drawing.Size(75, 23);
             this.btnClose.TabIndex = 5;
@@ -501,43 +597,43 @@
             this.btnClose.UseVisualStyleBackColor = true;
             this.btnClose.Click += new System.EventHandler(this.btnClose_Click);
             // 
-            // tabPageTuning
+            // chkBTTProtocol
             // 
-            this.tabPageTuning.Controls.Add(this.btnAutoTune);
-            this.tabPageTuning.Controls.Add(this.chkTuningEnable);
-            this.tabPageTuning.Location = new System.Drawing.Point(4, 22);
-            this.tabPageTuning.Name = "tabPageTuning";
-            this.tabPageTuning.Size = new System.Drawing.Size(377, 106);
-            this.tabPageTuning.TabIndex = 2;
-            this.tabPageTuning.Text = "Tuning";
-            this.tabPageTuning.UseVisualStyleBackColor = true;
+            this.chkBTTProtocol.AutoSize = true;
+            this.chkBTTProtocol.Location = new System.Drawing.Point(9, 62);
+            this.chkBTTProtocol.Name = "chkBTTProtocol";
+            this.chkBTTProtocol.Size = new System.Drawing.Size(110, 17);
+            this.chkBTTProtocol.TabIndex = 5;
+            this.chkBTTProtocol.Text = "Use BTT protocol";
+            this.chkBTTProtocol.UseVisualStyleBackColor = true;
+            this.chkBTTProtocol.CheckedChanged += new System.EventHandler(this.chkBTTProtocol_CheckedChanged);
             // 
-            // chkTuningEnable
+            // label11
             // 
-            this.chkTuningEnable.AutoSize = true;
-            this.chkTuningEnable.Location = new System.Drawing.Point(3, 12);
-            this.chkTuningEnable.Name = "chkTuningEnable";
-            this.chkTuningEnable.Size = new System.Drawing.Size(100, 17);
-            this.chkTuningEnable.TabIndex = 16;
-            this.chkTuningEnable.Text = "Enable Logging";
-            this.chkTuningEnable.UseVisualStyleBackColor = true;
-            this.chkTuningEnable.CheckedChanged += new System.EventHandler(this.chkTuningEnable_CheckedChanged);
+            this.label11.AutoSize = true;
+            this.label11.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Italic, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.label11.Location = new System.Drawing.Point(3, 76);
+            this.label11.Name = "label11";
+            this.label11.Size = new System.Drawing.Size(267, 26);
+            this.label11.TabIndex = 21;
+            this.label11.Text = "Firmware upload/download using the UART bootloader\r\n(Requires STMFlashLoader to b" +
+    "e installed)";
             // 
-            // btnAutoTune
+            // btnFirmwareDownload
             // 
-            this.btnAutoTune.Location = new System.Drawing.Point(3, 80);
-            this.btnAutoTune.Name = "btnAutoTune";
-            this.btnAutoTune.Size = new System.Drawing.Size(75, 23);
-            this.btnAutoTune.TabIndex = 17;
-            this.btnAutoTune.Text = "Auto Tune";
-            this.btnAutoTune.UseVisualStyleBackColor = true;
-            this.btnAutoTune.Click += new System.EventHandler(this.btnAutoTune_Click);
+            this.btnFirmwareDownload.Location = new System.Drawing.Point(293, 79);
+            this.btnFirmwareDownload.Name = "btnFirmwareDownload";
+            this.btnFirmwareDownload.Size = new System.Drawing.Size(75, 23);
+            this.btnFirmwareDownload.TabIndex = 22;
+            this.btnFirmwareDownload.Text = "Download";
+            this.btnFirmwareDownload.UseVisualStyleBackColor = true;
+            this.btnFirmwareDownload.Click += new System.EventHandler(this.btnFirmwareDownload_Click);
             // 
             // frmMain
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(424, 570);
+            this.ClientSize = new System.Drawing.Size(424, 601);
             this.Controls.Add(this.btnClose);
             this.Controls.Add(this.grpConnection);
             this.Controls.Add(this.gprControls);
@@ -558,12 +654,14 @@
             this.tabPageMain.PerformLayout();
             this.groupBox1.ResumeLayout(false);
             this.groupBox1.PerformLayout();
+            this.tabPageTuning.ResumeLayout(false);
+            this.tabPageTuning.PerformLayout();
+            this.tabPageFirmware.ResumeLayout(false);
+            this.tabPageFirmware.PerformLayout();
             this.tabPageExperimental.ResumeLayout(false);
             this.tabPageExperimental.PerformLayout();
             this.grpConnection.ResumeLayout(false);
             this.grpConnection.PerformLayout();
-            this.tabPageTuning.ResumeLayout(false);
-            this.tabPageTuning.PerformLayout();
             this.ResumeLayout(false);
 
         }
@@ -610,6 +708,15 @@
         private System.Windows.Forms.TabPage tabPageTuning;
         private System.Windows.Forms.CheckBox chkTuningEnable;
         private System.Windows.Forms.Button btnAutoTune;
+        private System.Windows.Forms.Button btnFirmwareUpload;
+        private System.Windows.Forms.TabPage tabPageFirmware;
+        private System.Windows.Forms.Button btnBrowseFirmware;
+        private System.Windows.Forms.Label label10;
+        private System.Windows.Forms.TextBox txtFirmwareUploadPath;
+        private System.Windows.Forms.CheckBox chkBTTProtocol;
+        private System.Windows.Forms.ToolTip toolTips;
+        private System.Windows.Forms.Label label11;
+        private System.Windows.Forms.Button btnFirmwareDownload;
     }
 }
 

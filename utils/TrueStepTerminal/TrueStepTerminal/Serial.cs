@@ -6,7 +6,10 @@ using System.Threading.Tasks;
 
 namespace TrueStepTerminal
 {
-    public class Serial
+    /// <summary>
+    /// TrueStep native serial protocol implementation
+    /// </summary>
+    public class Serial:SerialProtocolBase
     {
         enum PARSE_STATES
         {
@@ -18,8 +21,6 @@ namespace TrueStepTerminal
             CHECKSUM
         };
 
-        public delegate void PacketReceived_EventHandler(object sender, byte[] packet);
-        public event PacketReceived_EventHandler PacketReceived;
 
         PARSE_STATES parseState;
         Queue<byte> parseBuffer = new Queue<byte>();
@@ -33,7 +34,7 @@ namespace TrueStepTerminal
             parseBuffer.Clear();
         }
 
-        public void Parse(byte data)
+        public override void Parse(byte data)
         {
             switch(parseState)
             {
@@ -75,9 +76,7 @@ namespace TrueStepTerminal
 
                     if (crc_calc == data)
                     {
-                        PacketReceived_EventHandler handler = PacketReceived;
-                        if (handler != null)
-                            handler(this, packetBytes);
+                        NotifyNewPacketReceived(packetBytes);
                     }
                     else
                     {
@@ -93,7 +92,7 @@ namespace TrueStepTerminal
         }
 
 
-        public byte[] GeneratePacket(byte[] data)
+        public override byte[] GeneratePacket(byte[] data)
         {
             byte[] newPacket = new byte[data.Length + 3];
 

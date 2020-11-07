@@ -8,3 +8,6 @@ C:\Users\Jan\source\repos\TrueStepTerminal\TrueStepTerminal\obj\Debug\TrueStepTe
 C:\Users\Jan\source\repos\TrueStepTerminal\TrueStepTerminal\obj\Debug\TrueStepTerminal.csproj.CoreCompileInputs.cache
 C:\Users\Jan\source\repos\TrueStepTerminal\TrueStepTerminal\obj\Debug\TrueStepTerminal.exe
 C:\Users\Jan\source\repos\TrueStepTerminal\TrueStepTerminal\obj\Debug\TrueStepTerminal.pdb
+C:\Users\Jan\source\repos\TrueStepTerminal\TrueStepTerminal\bin\Debug\Newtonsoft.Json.dll
+C:\Users\Jan\source\repos\TrueStepTerminal\TrueStepTerminal\bin\Debug\Newtonsoft.Json.xml
+C:\Users\Jan\source\repos\TrueStepTerminal\TrueStepTerminal\obj\Debug\TrueStepTerminal.csproj.CopyComplete
