@@ -1,3 +1,4 @@
+#include "main.h"
 #include "display.h"
 #include "oled.h"
 #include "menu.h"
@@ -9,6 +10,7 @@ struct menuItem menuItemCurrent;
 struct menuItem menuItemStepSize;
 struct menuItem menuItemEnablePin;
 struct menuItem menuItemDirectionPin;
+struct menuItem menuItemClosedLoopMode;
 struct menuItem menuItemPID_P;
 struct menuItem menuItemPID_I;
 struct menuItem menuItemPID_D;
@@ -50,6 +52,21 @@ void Changer_StepSize(struct Menu *menu, int16_t val)
     if (newVal <= menu->items[menu->selectedItemIndex]->variable.maxValue)
       *(uint8_t*)menu->items[menu->selectedItemIndex]->variable.value = newVal;
   } 
+}
+
+
+// Override function for the default item value changer
+void Changer_ClosedLoopMode(struct Menu *menu, int16_t val)
+{  
+  if (val == 1)
+  {
+    closemode = 1;
+    PID_Cal_value_init();    
+  }    
+  else
+  {
+    closemode = 0;
+  }  
 }
 
 
@@ -148,10 +165,18 @@ void BuildMenu()
   menuItemDirectionPin.variable.value = &Motor_Dir;
   menuItemDirectionPin.variable.maxValue = 1;
 
+  Menu_Item_Init(&menuItemClosedLoopMode);
+  menuItemClosedLoopMode.title = "Closed M";
+  menuItemClosedLoopMode.type = MENU_ITEM_TYPE_VARIABLE_UINT8;
+  menuItemClosedLoopMode.variable.value = &closemode;
+  menuItemClosedLoopMode.variable.maxValue = 1;
+  menuItemClosedLoopMode.variable.minValue = 0;
+  menuItemClosedLoopMode.variable.change = &Changer_ClosedLoopMode;   // Override the default value change function
+
   Menu_Item_Init(&menuItemPID_P);
   menuItemPID_P.title = "PID P";
   menuItemPID_P.type = MENU_ITEM_TYPE_VARIABLE_UINT16;
-  menuItemPID_P.variable.value = &kp;
+  menuItemPID_P.variable.value = &kp; 
   
   Menu_Item_Init(&menuItemPID_I);
   menuItemPID_I.title = "PID I";
@@ -185,6 +210,7 @@ void BuildMenu()
   Menu_Add_Item(&menuMain, &menuItemStepSize);
   Menu_Add_Item(&menuMain, &menuItemEnablePin);
   Menu_Add_Item(&menuMain, &menuItemDirectionPin);
+  Menu_Add_Item(&menuMain, &menuItemClosedLoopMode);
   Menu_Add_Item(&menuMain, &menuItemPID_P);
   Menu_Add_Item(&menuMain, &menuItemPID_I);
   Menu_Add_Item(&menuMain, &menuItemPID_D);
