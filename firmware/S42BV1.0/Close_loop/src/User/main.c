@@ -125,7 +125,7 @@ uint8_t Currents=0;                     //
 uint8_t Motor_Dir=0;                    //
 volatile uint8_t Motor_ENmode_flag=0;   //
 
-uint16_t table1[14];                    //
+uint16_t table1[15];                    //
 volatile uint8_t Reset_status_flag=0;                    
 
 
@@ -161,7 +161,7 @@ int main(void)
         Reset_status_flag = 1;                                
 
         // Read parameters                                                         
-        STMFLASH_Read(Data_Store_Address, table1, 14); 
+        STMFLASH_Read(Data_Store_Address, table1, sizeof(table1)); 
         
         // Check DIP switches
         // TODO: Maybe remove DIP switch options, can already
@@ -181,14 +181,20 @@ int main(void)
           } 
 
         // Apply parameters read from flash
-        Currents = table1[1];                     
-        stepangle = table1[3];                 
-        Motor_ENmode_flag = table1[5];    
-        Motor_Dir = table1[7];            
+        Currents = table1[1];
+        stepangle = table1[3];
+        Motor_ENmode_flag = table1[5];
+        Motor_Dir = table1[7];
         
-        kp = table1[11];                
-        ki = table1[12];                
-        kd = table1[13];                
+        kp = table1[11];
+        ki = table1[12];
+        kd = table1[13];
+
+        closemode = table1[14];
+        if(closemode > 1)     //vc: if saved value is not initialized yet
+          closemode = 0;
+        if(closemode == 1)
+          PID_Cal_value_init();
     }
     else
     {   
@@ -1402,9 +1408,10 @@ void CalibrateEncoder(void)
   table1[11]=kp;                  
   table1[12]=ki;
   table1[13]=kd;
+  table1[14]=closemode;
 
   Calibration_flag = 0xAA;    
-  STMFLASH_Write(Data_Store_Address,table1,14);
+  STMFLASH_Write(Data_Store_Address,table1,sizeof(table1));
   
   
   //NVIC_EnableIRQ(EXTI0_1_IRQn);

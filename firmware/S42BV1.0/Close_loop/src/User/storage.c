@@ -102,9 +102,10 @@ void StoreCurrentParameters()
   table1[11]  = kp;                  
   table1[12]  = ki;
   table1[13]  = kd;
+  table1[14]  = closemode;
 
   NVIC_DisableIRQ(USART1_IRQn);
-  STMFLASH_Write(Data_Store_Address, table1, 14);
+  STMFLASH_Write(Data_Store_Address, table1, sizeof(table1));
   NVIC_EnableIRQ(USART1_IRQn);
 
   LL_mDelay(250);
