@@ -63,17 +63,17 @@
 
 
 //------------------------------			   
-#define OLED_CS_Pin             LL_GPIO_PIN_12		//
-#define OLED_CS_GPIO_Port       GPIOB
-#define OLED_RST_Pin            LL_GPIO_PIN_13 		//
-#define OLED_RST_GPIO_Port      GPIOC
-#define OLED_RS_Pin             LL_GPIO_PIN_13		//
-#define OLED_RS_GPIO_Port       GPIOB
+// #define OLED_CS_Pin             LL_GPIO_PIN_12		//
+// #define OLED_CS_GPIO_Port       GPIOB
+// #define OLED_RST_Pin            LL_GPIO_PIN_13 		//
+// #define OLED_RST_GPIO_Port      GPIOC
+// #define OLED_RS_Pin             LL_GPIO_PIN_13		//
+// #define OLED_RS_GPIO_Port       GPIOB
 
-#define OLED_SCLK_Pin           LL_GPIO_PIN_15		//
-#define OLED_SCLK_GPIO_Port     GPIOB
-#define OLED_SDIN_Pin           LL_GPIO_PIN_14	    //
-#define OLED_SDIN_GPIO_Port     GPIOB
+// #define OLED_SCLK_Pin           LL_GPIO_PIN_15		//
+// #define OLED_SCLK_GPIO_Port     GPIOB
+// #define OLED_SDIN_Pin           LL_GPIO_PIN_14	    //
+// #define OLED_SDIN_GPIO_Port     GPIOB
 
 
 #ifndef NVIC_PRIORITYGROUP_0
@@ -117,29 +117,29 @@
 //#define SPI_TX_PP  LL_GPIO_SetPinOutputType(MOSI_GPIO_Port, MOSI_Pin, LL_GPIO_OUTPUT_PUSHPULL)
 
 /*******************OLED output Defined****************************/
-#define OLED_CS_H       LL_GPIO_SetOutputPin(OLED_CS_GPIO_Port, OLED_CS_Pin)  		//
-#define OLED_CS_L       LL_GPIO_ResetOutputPin(OLED_CS_GPIO_Port, OLED_CS_Pin)
+// #define OLED_CS_H       LL_GPIO_SetOutputPin(OLED_CS_GPIO_Port, OLED_CS_Pin)  		//
+// #define OLED_CS_L       LL_GPIO_ResetOutputPin(OLED_CS_GPIO_Port, OLED_CS_Pin)
 
-#define OLED_RST_H      LL_GPIO_SetOutputPin(OLED_RST_GPIO_Port,OLED_RST_Pin) 		//
-#define OLED_RST_L      LL_GPIO_ResetOutputPin(OLED_RST_GPIO_Port,OLED_RST_Pin) 	//
+// #define OLED_RST_H      LL_GPIO_SetOutputPin(OLED_RST_GPIO_Port,OLED_RST_Pin) 		//
+// #define OLED_RST_L      LL_GPIO_ResetOutputPin(OLED_RST_GPIO_Port,OLED_RST_Pin) 	//
 
-#define OLED_RS_H       LL_GPIO_SetOutputPin(OLED_RS_GPIO_Port,OLED_RS_Pin)		//
-#define OLED_RS_L       LL_GPIO_ResetOutputPin(OLED_RS_GPIO_Port,OLED_RS_Pin)		//
+// #define OLED_RS_H       LL_GPIO_SetOutputPin(OLED_RS_GPIO_Port,OLED_RS_Pin)		//
+// #define OLED_RS_L       LL_GPIO_ResetOutputPin(OLED_RS_GPIO_Port,OLED_RS_Pin)		//
 
-#define OLED_SCLK_H     LL_GPIO_SetOutputPin(OLED_SCLK_GPIO_Port,OLED_SCLK_Pin)		//
-#define OLED_SCLK_L     LL_GPIO_ResetOutputPin(OLED_SCLK_GPIO_Port,OLED_SCLK_Pin)		//
+// #define OLED_SCLK_H     LL_GPIO_SetOutputPin(OLED_SCLK_GPIO_Port,OLED_SCLK_Pin)		//
+// #define OLED_SCLK_L     LL_GPIO_ResetOutputPin(OLED_SCLK_GPIO_Port,OLED_SCLK_Pin)		//
 
-#define OLED_SDIN_H     LL_GPIO_SetOutputPin(OLED_SDIN_GPIO_Port,OLED_SDIN_Pin)	    //
-#define OLED_SDIN_L     LL_GPIO_ResetOutputPin(OLED_SDIN_GPIO_Port,OLED_SDIN_Pin)		//
+// #define OLED_SDIN_H     LL_GPIO_SetOutputPin(OLED_SDIN_GPIO_Port,OLED_SDIN_Pin)	    //
+// #define OLED_SDIN_L     LL_GPIO_ResetOutputPin(OLED_SDIN_GPIO_Port,OLED_SDIN_Pin)		//
 
 
 
 /* Functionality mode */
 //#define REFERESH_ANGLE		0
 
-#define UMAXCL   62    //
-#define UMAXOP   160    //
-#define UMAXSUM  25600  //
+#define UMAXCL   62         //
+#define UMAXOP   160        // Open loop maximum current, this translate to (3.3V / 256) * 160 = 2V on the Vref pin
+#define UMAXSUM  25600      //
 
 
 extern int16_t kp;     

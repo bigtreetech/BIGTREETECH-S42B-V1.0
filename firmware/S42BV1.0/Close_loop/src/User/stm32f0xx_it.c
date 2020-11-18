@@ -231,6 +231,7 @@ void TIM6_IRQHandler(void)
         r = s_sum + stepangle * s;
         s_1 = s;
       
+        // Check if motor is in idle
         if(r == r_1)
         {
           hccount++;
@@ -240,6 +241,7 @@ void TIM6_IRQHandler(void)
         else
           hccount=0;
         
+        // When in idle reduce current to half
         if(hccount >= 1000)
           Output(r,UMAXOP/2);
         else
