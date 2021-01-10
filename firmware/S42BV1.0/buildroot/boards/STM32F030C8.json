@@ -14,8 +14,9 @@
         "0x0004"
       ]
     ],
-    "ldscript": "STM32F030C8_FLASH.ld",
+    "ldscript": "buildroot/ldscripts/STM32F030C8_FLASH.ld",
     "mcu": "stm32f030c8t6",
+    "product_line": "STM32F030X8",
     "variant": "stm32f0"
   },
   "debug": {
