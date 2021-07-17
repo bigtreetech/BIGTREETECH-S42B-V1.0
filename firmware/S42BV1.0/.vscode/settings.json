@@ -4,6 +4,10 @@
         "stm32f0xx.h": "c",
         "stm32f0xx_hal.h": "c",
         "stm32f0xx_ll_system.h": "c",
-        "cstdio": "c"
+        "cstdio": "c",
+        "cmath": "c",
+        "limits": "c",
+        "*.tcc": "c",
+        "typeinfo": "c"
     }
 }

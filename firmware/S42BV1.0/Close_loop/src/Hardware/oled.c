@@ -2,7 +2,8 @@
 #include "oled.h"
 #include "stdlib.h"
 #include "oledfont.h"  	 
-
+#include "stm32f0xx_ll_spi.h"
+#include "stm32f0xx_ll_bus.h"
 
 
 uint8_t OLED_GRAM[128][8];
@@ -39,6 +40,7 @@ void OLED_WR_Byte(u8 dat,u8 cmd)
 void OLED_WR_Byte(uint8_t dat,uint8_t cmd)
 {	
 	uint8_t i;	
+	//LL_TIM_DisableCounter(TIM6);				//JaSw: Maybe helps with OLED issues but haven't tested yet.
     if(cmd)    
         OLED_RS_H; 
     else 
@@ -53,7 +55,8 @@ void OLED_WR_Byte(uint8_t dat,uint8_t cmd)
 		dat<<=1;   
 	}				 
 	OLED_CS_H;		  
-	OLED_RS_H;   	  
+	OLED_RS_H;  
+	//LL_TIM_EnableCounter(TIM6); 	  
 } 
 #endif	     
 
@@ -156,22 +159,34 @@ void OLED_ShowNum(uint8_t x,uint8_t y,uint32_t num,uint8_t len,uint8_t size)
 			}else enshow=1;  
 		}
 	 	OLED_ShowChar(x+(size/2)*t,y,temp+'0',size,1); 
-	}
+	} 
 } 
+
 
 void OLED_ShowString(uint8_t x,uint8_t y,const char *p)
 {
 #define MAX_CHAR_POSX 120
-#define MAX_CHAR_POSY 58          
+#define MAX_CHAR_POSY 58
+
     while(*p!='\0')
     {       
-        if(x>MAX_CHAR_POSX){x=0;y+=16;}
-        if(y>MAX_CHAR_POSY){y=x=0;OLED_Clear();}
+        if(x > MAX_CHAR_POSX)
+		{ 
+			x=0;
+			y+=16;
+		}
+        if(y > MAX_CHAR_POSY)
+		{
+			y=x=0;
+			//OLED_Clear();
+			break;				// JaSw: Limit to a single page of text
+		}
         OLED_ShowChar(x,y,*p,16,1);	 
         x+=8;
         p++;
     }  
 }	   
+
 
 /*
 void OLED_Showword(uint8_t x,uint8_t y,uint8_t *num,uint8_t mode)
@@ -212,16 +227,60 @@ void OLED_Showword(uint8_t x,uint8_t y,uint8_t *num,uint8_t mode)
 }
 */
 
+
+void SPI2_Init()
+{
+	LL_SPI_InitTypeDef SPI2_InitStruct;
+	LL_GPIO_InitTypeDef GPIO_InitStruct;
+
+	LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_SPI2);
+
+  	//GPIO_InitStruct.Pin = OLED_CS_Pin| OLED_RS_Pin |OLED_SCLK_Pin|OLED_SDIN_Pin;
+	GPIO_InitStruct.Pin = LL_GPIO_PIN_13 | OLED_SCLK_Pin | OLED_SDIN_Pin;
+  	GPIO_InitStruct.Mode = LL_GPIO_MODE_ALTERNATE;
+  	GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_HIGH;
+  	GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
+  	GPIO_InitStruct.Pull = LL_GPIO_PULL_DOWN;
+	GPIO_InitStruct.Alternate = LL_GPIO_AF_0;
+  	LL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+	SPI2_InitStruct.TransferDirection = LL_SPI_FULL_DUPLEX;
+  	SPI2_InitStruct.Mode = LL_SPI_MODE_MASTER;
+  	SPI2_InitStruct.DataWidth = LL_SPI_DATAWIDTH_8BIT;
+  	SPI2_InitStruct.ClockPolarity = LL_SPI_POLARITY_LOW;
+  	SPI2_InitStruct.ClockPhase = LL_SPI_PHASE_1EDGE;
+  	SPI2_InitStruct.NSS = LL_SPI_NSS_SOFT;
+  	SPI2_InitStruct.BaudRate = LL_SPI_BAUDRATEPRESCALER_DIV8;
+  	SPI2_InitStruct.BitOrder = LL_SPI_MSB_FIRST;
+  	SPI2_InitStruct.CRCCalculation = LL_SPI_CRCCALCULATION_DISABLE;
+  	SPI2_InitStruct.CRCPoly = 7;
+  	LL_SPI_Init(SPI2, &SPI2_InitStruct);
+  	LL_SPI_SetStandard(SPI2, LL_SPI_PROTOCOL_MOTOROLA); 
+  	LL_SPI_Enable(SPI2);  
+}
+
 //SSD1306					    
 void OLED_Init(void)
-{ 	 
-    
+{ 
+	/* Testing OLED on SPI2, would require an adapter cable to correctly map pins...
+	
+	SPI2_Init();
+    while (1)
+	{
+		LL_GPIO_ResetOutputPin(GPIOB, OLED_CS_Pin);
+		while(LL_SPI_IsActiveFlag_TXE(SPI2)==0);
+  		LL_SPI_TransmitData16(SPI2, 0x14);
+		LL_GPIO_SetOutputPin(GPIOB, OLED_CS_Pin);
+		LL_mDelay(100);
+	}
+*/
 	OLED_RST_L;			  		//
 	LL_mDelay(100);
 	OLED_RST_H; 
 	OLED_WR_Byte(0xAE,OLED_CMD);//
 	OLED_WR_Byte(0xD5,OLED_CMD);//,
-	OLED_WR_Byte(80,OLED_CMD);  //
+	OLED_WR_Byte(oledClock,OLED_CMD);
+	//OLED_WR_Byte(0x00,OLED_CMD);  //	Modification proposed by Till (Quas7). Changed 80 to 0x00
 	OLED_WR_Byte(0xA8,OLED_CMD);//
 	OLED_WR_Byte(0X3F,OLED_CMD);//(1/64) 
 	OLED_WR_Byte(0xD3,OLED_CMD);//
@@ -252,30 +311,16 @@ void OLED_Init(void)
 }  
 
 
+// Change Display Clock Divide Ratio/ Oscillator Frequency
+void OLED_SetDisplayClock(uint8_t val)
+{
+	// Turn display off
+	OLED_WR_Byte(0xAE,OLED_CMD);
 
+	OLED_WR_Byte(0xD5,OLED_CMD);
+	OLED_WR_Byte(val,OLED_CMD);
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+	// Turn display back on again
+	OLED_WR_Byte(0xAF,OLED_CMD);
+}
 
